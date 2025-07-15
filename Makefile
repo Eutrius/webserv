@@ -14,14 +14,14 @@ NAME = webserv
 TITLE = Web Server
 
 CC = g++
-CFLAGS = -Wall -Werror -Wextra -std=c++98
+#CFLAGS = -Wall -Werror -Wextra -std=c++98
 INCLUDE = -I include
 RM = rm -rf
 
 OBJ_DIR = obj
 SRC_DIR = src
 
-SRC = src/main.cpp \
+SRC = src/main.cpp src/Epoll.cpp
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 IGN = .gitignore
@@ -37,7 +37,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@printf "\033[0;37m Generating $(TITLE) objects... %-33.33s\r" $@
 	@$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-RULES = all clean fclean re run valgrind i c 
+RULES = all clean fclean re run valgrind i c
 
 all: $(NAME)
 
@@ -54,7 +54,7 @@ fclean:
 
 re: fclean all
 
-i: 	
+i:
 	@printf "$(IGN)\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
 
 c:

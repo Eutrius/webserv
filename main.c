@@ -12,24 +12,24 @@ int main(int argc, char const *argv[])
     int server_fd, new_socket; long valread;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
-    
+
     char *hello = "Hello from server";
-    
+
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
         perror("In socket");
         exit(EXIT_FAILURE);
     }
-    
+
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons( PORT );
-    
+
     memset(address.sin_zero, '\0', sizeof address.sin_zero);
-    
-    
+
+
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
     {
         perror("In bind");
@@ -48,11 +48,11 @@ int main(int argc, char const *argv[])
             perror("In accept");
             exit(EXIT_FAILURE);
         }
-        
+
         char buffer[3000] = {0};
         while (1)
 		{
-			valread = read( new_socket , buffer, 30000);
+			valread = read( new_socket , buffer, 3000);
         	printf("\n%s\n",buffer );
         	memset(buffer, 0,  30);
 			write(new_socket , hello , strlen(hello));
