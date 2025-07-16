@@ -38,7 +38,7 @@ $(NAME): $(OBJ)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	@printf "\033[0;37m Generating $(TITLE) objects... %-33.33s\r" $@
+	@printf "\033[0;37m Generating $(TITLE) epolls... %-33.33s\r" $@
 	@$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
 RULES = all clean fclean re run valgrind i c

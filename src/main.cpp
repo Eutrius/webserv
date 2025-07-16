@@ -6,77 +6,60 @@
 #include <netinet/in.h>
 #include <string.h>
 #include "Epoll.hpp"
+#include "Socket.hpp"
 
-#define PORT 8080
+#define PORT "8080"
+#define HOST "127.0.0.1"
 
 int main(int argc, char const *argv[])
 {
-    int server_fd, new_socket; long valread;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    Epoll   object;
+    try{
+        Socket  newSocket(HOST, PORT);
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+    }
+    Socket  newSocket(HOST, PORT);
+    int     socket_fd;
+    Epoll   epoll;
     struct epoll_event ev;
-    int max_events;
     struct epoll_event* events;
-    int i = 0;
+    int     nr_events;
+    int     new_socket;
 
-    char *hello = "Hello from server";
-
-    // Creating socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("In socket");
-        exit(EXIT_FAILURE);
-    }
-
-
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons( PORT );
-
-    memset(address.sin_zero, '\0', sizeof address.sin_zero);
-
-
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
-    {
-        perror("In bind");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(server_fd, 10) < 0)
-    {
-        perror("In listen");
-        exit(EXIT_FAILURE);
-    }
-    ev.events = EPOLLIN;
-    ev.data.fd = server_fd;
-    epoll_ctl(object.getEpfd(), EPOLL_CTL_ADD, server_fd, &ev);
+    std::string hello = "hello from server";
+    socket_fd = newSocket.getFd();
+    ev.events =  EPOLLIN | EPOLLOUT;
+    ev.data.fd = socket_fd;
+    epoll_ctl(epoll.getEpfd(), EPOLL_CTL_ADD, socket_fd, &ev);
     while(1)
     {
-        max_events = object.wait();
-        events = object.getEvents();
+        nr_events = epoll.wait();
+        events = epoll.getEvents();
         printf("\n+++++++ Waiting for new connection ++++++++\n\n");
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)
+        if ((new_socket = newSocket.accept())<0)
         {
             perror("In accept");
             exit(EXIT_FAILURE);
         }
-        if (new_socket != server_fd)
+        if (new_socket != socket_fd)
         {
-            object.add_fd(new_socket);
+            epoll.add_fd(new_socket);
             char buffer[3000] = {0};
-            for (i = 0; i < max_events; i++)
+            for (int i = 0; i < nr_events; i++)
 		    {
-			    valread = read(events[i].data.fd, buffer, 3000);
+			    int valread = read(events[i].data.fd, buffer, 3000);
         	    printf("\n%s\n",buffer );
         	    memset(buffer, 0,  3000);
                 if (valread > 0)
-			        write(events[i].data.fd, hello , strlen(hello));
+			        write(events[i].data.fd, hello.c_str() , hello.size());
         	    printf("------------------Hello message sent-------------------\n");
 		    }
         }
-        //object.remove_fd(new_socket);
+        //epoll.remove_fd(new_socket);
         // close(new_socket);
     }
-    object.remove_fd(server_fd);
+    epoll.remove_fd(socket_fd);
     return 0;
 }

@@ -4,6 +4,7 @@ static int atoi_ip(const std::string &host);
 
 Socket::Socket(const std::string &host, const std::string &port)
 {
+    _addressLen = sizeof(_address);
     _fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_fd < 0)
         throw std::runtime_error("Socket: failed to create socket");
@@ -12,9 +13,11 @@ Socket::Socket(const std::string &host, const std::string &port)
     if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
         throw std::runtime_error("Socket: failed to set socket opt");
 
+    _address.sin_addr.s_addr = INADDR_ANY;
     _address.sin_family = AF_INET;
-    _address.sin_addr.s_addr = htonl(atoi_ip(host));
-    _address.sin_port = htons(std::atoi(port.c_str()));
+    // _address.sin_addr.s_addr = htonl(atoi_ip(host));
+    //_address.sin_port = htons(std::atoi(port.c_str()));
+    _address.sin_port = htons(8080);
     std::memset(_address.sin_zero, '\0', sizeof(_address.sin_zero));
 
     if (bind(_fd, (struct sockaddr *)&_address, sizeof(_address)) < 0)
@@ -46,6 +49,20 @@ int Socket::getFd(void) const
     return (_fd);
 }
 
+struct sockaddr_in *Socket::getAddress(void)
+{
+    return (&_address);
+}
+
+int * Socket::getAddressLen(void)
+{
+    return (&_addressLen);
+}
+
+int Socket::accept()
+{
+    return ::accept(_fd, (struct sockaddr *)&_address, (socklen_t*)&_addressLen);
+}
 static int atoi_ip(const std::string &host)
 {
     std::istringstream ss(host);
