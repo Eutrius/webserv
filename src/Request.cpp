@@ -10,8 +10,8 @@ Request::Request(std::string request)
 
 	pos = this->findType(request);
 	_location = this->findInfo(request, _type);
-	_hostname = this->findInfo(request, "Host:");
-	findPort(_hostname);
+	_ip = this->findInfo(request, "Host:");
+	findPort(_ip);
 	_connection = this->findInfo(request, "Connection:");
 	_accept = this->findInfo(request, "Accept:");
 	printInfoRequest();
@@ -51,9 +51,13 @@ std::string	Request::findInfo(std::string request, std::string toFind)
 {
 	int	end;
 	int begin;
-	std::string	result = {0};
+	int pos;
+	std::string	result;
 
-	begin = request.find(toFind) + toFind.length();
+	pos = request.find(toFind);
+	if (pos == -1)
+		return (0);
+	begin = pos + toFind.length();
 	while (request[begin] != ' ')
 		begin++;
 	end = begin + 1;
@@ -68,14 +72,22 @@ void	Request::findPort(std::string hostname)
 	int pos;
 
 	pos = hostname.find(":");
+	if (pos == -1)
+	{
+		_hostname = _port;
+		_port.erase(0);
+	}
 	_port.append(hostname, pos + 1);
-	_hostname.erase(pos);
+	_ip.erase(pos);
+	if (_ip == "localhost")
+		_ip = "127.0.0.1";
 }
 void	Request::printInfoRequest(void) const
 {
 	std::cout << "TYPE: " << this->_type << std::endl;
 	std::cout << "LOCATION: " << this->_location << std::endl;
 	std::cout << "HOSTNAME: " << this->_hostname << std::endl;
+	std::cout << "IP: " << this->_ip << std::endl;
 	std::cout << "PORT: " << this->_port << std::endl;
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;

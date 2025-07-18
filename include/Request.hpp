@@ -20,12 +20,14 @@ class Request
 		std::string	findInfo(std::string request, std::string toFind);
 		void		printInfoRequest(void) const;
 		void		findPort(std::string hostname);
+		std::string	checkServer(void);
 
 	protected:
 		std::string _type;
-		std::string _hostname;
+		std::string _ip;
 		std::string	_port;
 		std::string _location;
 		std::string	_connection;
 		std::string _accept;
+		std::string _hostname;
 };

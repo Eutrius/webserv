@@ -1,27 +1,38 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <sstream>
+#include <fstream>
+#include <cstring>
+#include <algorithm>
 
 struct Location {
-    bool						autoindex;
-    std::vector<std::string>	allow;
-    std::map<int, std::string>	return_path; // da 0 a 999
-    std::string					upload_dir;
-    std::vector<std::string>	cgi_extension;
-    std::string					root;
-    std::string					index;
+	bool						autoindex;
+	int							methods;
+	std::pair<int, std::string>	return_path; // da 0 a 999
+	std::string					upload_dir;
+	std::vector<std::string>	cgi_extension;
+	std::string					root;
+	std::vector<std::string>	index;
+	std::map<int, std::string>	error_page;
 };
 
 struct Server {
     std::vector<std::string>		server_name;
-    std::string				    	index;
-    int								listen; // tra 1-65535
+    std::vector<std::string>		index;
+    std::vector<std::pair<int, int> >			listen; // tra 1-65535
     std::string						root;
+    std::string						upload_dir;
     bool							autoindex;
-    std::string						host;
     std::vector<std::string>		cgi_extension;
-    std::vector<std::string>		allow;
+    int								methods;
     size_t							client_max_body_size;
     std::map<int, std::string>		error_page;     //must be between 300 and 599
     std::map<std::string, Location>	location;
 };
+
+void readFileAsString(std::ifstream& file, std::vector<Server>& main_vector);

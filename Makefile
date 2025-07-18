@@ -27,6 +27,7 @@ SRC = src/main.cpp \
 	  src/Socket.cpp \
 	  src/Webserver.cpp \
 	  src/Request.cpp \
+	  src/parser.cpp \
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 IGN = .gitignore

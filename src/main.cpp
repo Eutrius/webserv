@@ -8,12 +8,40 @@
 #include "Epoll.hpp"
 #include "Socket.hpp"
 #include "Request.hpp"
+#include "webserver.hpp"
 
 #define PORT "8080"
 #define HOST "127.0.0.1"
 
 int main(int argc, char const* argv[])
 {
+	std::vector<Server>	main_vector;
+
+	if (argc != 2)
+	{
+		std::cerr << "error1\n";
+		return (1);
+	}
+	 if (std::strlen(argv[1]) < 5 || std::strcmp(argv[1] + std::strlen(argv[1]) - 5, ".conf"))
+	 {
+       std::cerr << "error2\n";
+		return (1);
+    }
+	std::ifstream file(argv[1]);
+    if (!file)
+	{
+        std::cerr << "error3\n";
+        return (1);
+    }
+	try
+	{
+		readFileAsString(file, main_vector);
+	}
+	catch (std::exception& e)
+	{
+		std::cout << e.what() << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	try
 	{
 		Socket newSocket(HOST, PORT);
