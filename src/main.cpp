@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include "Epoll.hpp"
 #include "Socket.hpp"
+#include "Request.hpp"
 
 #define PORT "8080"
 #define HOST "127.0.0.1"
@@ -62,6 +63,7 @@ int main(int argc, char const* argv[])
 				else
 				{
 					printf("\n%s\n", buffer);
+					Request request(buffer);
 					memset(buffer, 0, 3000);
 					write(events[i].data.fd, hello.c_str(), hello.size());
 				}
