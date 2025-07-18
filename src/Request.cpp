@@ -89,23 +89,16 @@ void	Request::findPort(std::string _ip)
 
 void	Request::checkServer(std::vector<Server> server)
 {
-	Server correct;
-
-	for (int i = 0; i < server.size(); i++)
+	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it=server[i];
-		std::cout << _port.first << " " << _port.second << std::endl;
 		if (std::find(it.listen.begin(), it.listen.end(), _port) != it.listen.end())
 		{
-			correct = it;
+			_rightServer = it;
 			if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
-			{
-				_rightServer = correct;
 				return ;
-			}
 		}
 	}
-	_rightServer = correct;
 }
 
 void	Request::printInfoRequest(void) const
