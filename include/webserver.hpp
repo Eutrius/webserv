@@ -36,3 +36,5 @@ struct Server {
 };
 
 void readFileAsString(std::ifstream& file, std::vector<Server>& main_vector);
+int	atoi_ip(const std::string &host);
+void printServers(const std::vector<Server>& servers);

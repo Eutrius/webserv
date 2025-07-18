@@ -8,7 +8,6 @@
 #include "Epoll.hpp"
 #include "Socket.hpp"
 #include "Request.hpp"
-#include "webserver.hpp"
 
 #define PORT "8080"
 #define HOST "127.0.0.1"
@@ -31,7 +30,6 @@ int main(int argc, char const* argv[])
     if (!file)
 	{
         std::cerr << "error3\n";
-        return (1);
     }
 	try
 	{
@@ -40,8 +38,10 @@ int main(int argc, char const* argv[])
 	catch (std::exception& e)
 	{
 		std::cout << e.what() << std::endl;
-		exit(EXIT_FAILURE);
+		file.close();
+		return (1);
 	}
+	file.close();
 	try
 	{
 		Socket newSocket(HOST, PORT);
@@ -92,6 +92,8 @@ int main(int argc, char const* argv[])
 				{
 					printf("\n%s\n", buffer);
 					Request request(buffer);
+					request.checkServer(main_vector);
+					request.printInfoRequest();
 					memset(buffer, 0, 3000);
 					write(events[i].data.fd, hello.c_str(), hello.size());
 				}

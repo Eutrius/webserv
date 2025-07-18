@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <string.h>
+#include "webserver.hpp"
 
 class Request
 {
@@ -20,12 +21,13 @@ class Request
 		std::string	findInfo(std::string request, std::string toFind);
 		void		printInfoRequest(void) const;
 		void		findPort(std::string hostname);
-		std::string	checkServer(void);
+		void		checkServer(std::vector<Server> server);
 
 	protected:
+		Server		_rightServer;
 		std::string _type;
-		std::string _ip;
-		std::string	_port;
+		std::string	_ip;
+		std::pair<int, int> _port;
 		std::string _location;
 		std::string	_connection;
 		std::string _accept;

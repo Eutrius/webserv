@@ -14,7 +14,6 @@ Request::Request(std::string request)
 	findPort(_ip);
 	_connection = this->findInfo(request, "Connection:");
 	_accept = this->findInfo(request, "Accept:");
-	printInfoRequest();
 }
 
 Request::~Request(void)
@@ -67,28 +66,59 @@ std::string	Request::findInfo(std::string request, std::string toFind)
 	return (result);
 }
 
-void	Request::findPort(std::string hostname)
+void	Request::findPort(std::string _ip)
 {
 	int pos;
+	std::string port;
+	int num;
 
-	pos = hostname.find(":");
+	pos = _ip.find(":");
 	if (pos == -1)
 	{
-		_hostname = _port;
-		_port.erase(0);
+		_hostname = _ip;
+		return ;
 	}
-	_port.append(hostname, pos + 1);
+	port.append(_ip, pos + 1);
 	_ip.erase(pos);
 	if (_ip == "localhost")
 		_ip = "127.0.0.1";
+    _port.first = atoi_ip(_ip);
+	_port.second = std::stoi(port);
+
 }
+
+void	Request::checkServer(std::vector<Server> server)
+{
+	Server correct;
+
+	for (int i = 0; i < server.size(); i++)
+	{
+		Server it=server[i];
+		std::cout << _port.first << " " << _port.second << std::endl;
+		if (std::find(it.listen.begin(), it.listen.end(), _port) != it.listen.end())
+		{
+			correct = it;
+			if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
+			{
+				_rightServer = correct;
+				return ;
+			}
+		}
+	}
+	_rightServer = correct;
+}
+
 void	Request::printInfoRequest(void) const
 {
+	std::vector<Server> temp;
+
+	temp.push_back(_rightServer);
 	std::cout << "TYPE: " << this->_type << std::endl;
 	std::cout << "LOCATION: " << this->_location << std::endl;
 	std::cout << "HOSTNAME: " << this->_hostname << std::endl;
-	std::cout << "IP: " << this->_ip << std::endl;
-	std::cout << "PORT: " << this->_port << std::endl;
+	std::cout << "IP: " << this->_port.first << std::endl;
+	std::cout << "PORT: " << this->_port.second << std::endl;
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
+	printServers(temp);
 }
