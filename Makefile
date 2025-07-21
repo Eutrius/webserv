@@ -14,7 +14,7 @@ NAME = webserv
 TITLE = Web Server
 
 CC = g++
-#CFLAGS = -Wall -Werror -Wextra -std=c++98
+CFLAGS = -Wall -Werror -Wextra -std=c++98
 INCLUDE = -I include
 RM = rm -rf
 

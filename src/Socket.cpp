@@ -5,7 +5,6 @@ static int atoi_ip(const std::string &host);
 Socket::Socket(const std::string &host, const std::string &port)
 {
 	struct sockaddr_in address;
-	int addressLen = sizeof(address);
 	_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_fd < 0)
 		throw std::runtime_error("Socket: failed to create socket");

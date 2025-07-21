@@ -23,9 +23,11 @@ class Request
 		void		findPort(std::string hostname);
 		void		checkServer(std::vector<Server> server);
 		void		analizeRequestLine(std::string requestLine);
+		void		lookForLocation(void);
 
 	protected:
 		Server				_rightServer;
+		Location			_rightLocation;
 		std::string 		_type;
 		std::pair<int, int> _port;
 		std::string 		_location;

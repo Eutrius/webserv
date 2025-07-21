@@ -19,7 +19,7 @@ Request::Request(std::string request)
 	_bodyLength = findInfo(request, "Content-Length");
 	_headerEnd = request.find("\r\n\r\n");
 	_body = request.substr(_headerEnd);
-	if (_bodyLength != "" && std::stoi(_bodyLength) != _body.length())
+	if (_bodyLength != "" && std::atoi(_bodyLength.c_str()) != (int)_body.length())
 		std::cout << "Invalid body Lenght" << std::endl;
 	if (_headerEnd == -1)
 		std::cout << "Bad request" << std::endl;
@@ -84,7 +84,6 @@ void	Request::findPort(std::string adress)
 {
 	int pos;
 	std::string port;
-	int num;
 
 	pos = adress.find(":");
 	if (pos == -1)
@@ -99,7 +98,7 @@ void	Request::findPort(std::string adress)
 	if (adress == "localhost")
 		adress = "127.0.0.1";
     _port.first = atoi_ip(adress);
-	_port.second = std::stoi(port);
+	_port.second = std::atoi(port.c_str());
 
 }
 
@@ -124,14 +123,37 @@ void	Request::checkServer(std::vector<Server> server)
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it=server[i];
-		if (std::find(it.listen.begin(), it.listen.end(), _port) != it.listen.end())
+		for (size_t x = 0; x < it.listen.size(); x++)
 		{
-			_rightServer = it;
-			if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
-				return ;
+			if (it.listen[x].second == _port.second && (it.listen[x].first == _port.first || it.listen[x].first == 0 || _port.first == 0))
+			{
+				_rightServer = it;
+				if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
+					return  ;
+				else
+					break ;
+			}
 		}
 	}
 }
+
+void	Request::lookForLocation(void)
+{
+	std::string	temp;
+	int			pos;
+
+	temp = ft_trim(_location);
+	if (_rightServer.location.find(temp) != _rightServer.location.end())
+		_rightLocation = _rightServer.location[temp];
+	pos = _location.rfind('/');
+	if (pos == -1)
+		std::cout << "404: file not found" << std::endl;
+	temp.erase(pos);
+	if (_rightServer.location.find(temp) != _rightServer.location.end())
+		_rightLocation = _rightServer.location[temp];;
+	std::cout << "404: file not found" << std::endl;
+}
+
 
 void	Request::printInfoRequest(void) const
 {
@@ -146,5 +168,6 @@ void	Request::printInfoRequest(void) const
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
 	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
+	std::cout << "LOCATION: " << _rightLocation.upload_dir << std::endl;
 	printServers(temp);
 }
