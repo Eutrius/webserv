@@ -53,7 +53,6 @@ int main(int argc, char const* argv[])
 	Socket newSocket(HOST, PORT);
 	int socket_fd;
 	Epoll epoll;
-	struct epoll_event ev;
 	struct epoll_event* events;
 	int nr_events;
 	int new_socket;
@@ -66,9 +65,7 @@ int main(int argc, char const* argv[])
 	    "\r\n"
 	    "Hello, browser!";
 	socket_fd = newSocket.getFd();
-	ev.events = EPOLLIN | EPOLLOUT;
-	ev.data.fd = socket_fd;
-	epoll_ctl(epoll.getEpfd(), EPOLL_CTL_ADD, socket_fd, &ev);
+	epoll.add_fd(socket_fd);
 	char buffer[3000] = {0};
 	while (1)
 	{

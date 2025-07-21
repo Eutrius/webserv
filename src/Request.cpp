@@ -5,16 +5,24 @@ Request::Request(void)
 
 Request::Request(std::string request)
 {
-	std::string	adress;
 
-	this->findType(request);
-	_location = this->findInfo(request, _type);
+	std::string	adress;
+	std::string requestLine = request.substr(0, request.find("\n"));
+
+	analizeRequestLine(requestLine);
 	adress = this->findInfo(request, "Host:");
+	if (adress == "")
+		std::cout << "Bad Request" << std::endl;
 	findPort(adress);
 	_connection = this->findInfo(request, "Connection:");
 	_accept = this->findInfo(request, "Accept:");
-	_bodyLength = this->findInfo(request, "Content-Length");
-	_body = request.find("\r\n\r\n");
+	_bodyLength = findInfo(request, "Content-Length");
+	_headerEnd = request.find("\r\n\r\n");
+	_body = request.substr(_headerEnd);
+	if (_bodyLength != "" && std::stoi(_bodyLength) != _body.length())
+		std::cout << "Invalid body Lenght" << std::endl;
+	if (_headerEnd == -1)
+		std::cout << "Bad request" << std::endl;
 }
 
 Request::~Request(void)
@@ -25,26 +33,29 @@ std::string	Request::getType(void) const
 	return (this->_type);
 }
 
-int	Request::findType(std::string request)
+void	Request::findType(std::string request)
 {
 	int pos;
 
 	pos = request.find("GET");
-	if (pos >= 0)
+	if (pos == 0)
 	{
 		_type = "GET";
-		return (pos);
+		return ;
 	}
 	pos = request.find("POST");
-	if (pos >= 0)
+	if (pos == 0)
 	{
 		_type = "POST";
-		return (pos);
+		return ;
 	}
 	pos = request.find("DELETE");
-	if (pos >= 0)
+	if (pos == 0)
+	{
 		_type = "DELETE";
-	return (pos);
+		return ;
+	}
+	std::cout << "Invalid Method" << std::endl;
 }
 
 std::string	Request::findInfo(std::string request, std::string toFind)
@@ -58,10 +69,12 @@ std::string	Request::findInfo(std::string request, std::string toFind)
 	if (pos == -1)
 		return ("");
 	begin = pos + toFind.length();
-	while (request[begin] != ' ')
+	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n')
 		begin++;
+	if (request[begin] == '\r' || request[begin] == '\n')
+		return ("");
 	end = begin + 1;
-	while (request[end] != ' ' && request[end] != '\n')
+	while (request[end] != ' ' && request[end] != '\n' && request[end] != '\r')
 		end++;
 	result.append(request, begin + 1, end - begin - 1);
 	return (result);
@@ -90,6 +103,22 @@ void	Request::findPort(std::string adress)
 
 }
 
+void	Request::analizeRequestLine(std::string requestLine)
+{
+	std::string	protocol;
+	std::string check;
+
+	this->findType(requestLine);
+	_location = this->findInfo(requestLine, _type);
+	protocol = this->findInfo(requestLine, _location);
+	check = this->findInfo(requestLine, protocol);
+	if (_location == "" || protocol == "" || check != "")
+		std::cout << "Bad request" << std::endl;
+	if (protocol != "HTTP/1.1")
+		std::cout << "Invalid HTTP Protocol" << std::endl;
+
+}
+
 void	Request::checkServer(std::vector<Server> server)
 {
 	for (int i = server.size() - 1; i >= 0; i--)
@@ -102,7 +131,6 @@ void	Request::checkServer(std::vector<Server> server)
 				return ;
 		}
 	}
-	std::cout << "server not found" << std::endl;
 }
 
 void	Request::printInfoRequest(void) const

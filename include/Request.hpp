@@ -17,11 +17,12 @@ class Request
 
 		std::string	getType(void) const;
 		void		parsingInput(std::string request);
-		int			findType(std::string request);
+		void		findType(std::string request);
 		std::string	findInfo(std::string request, std::string toFind);
 		void		printInfoRequest(void) const;
 		void		findPort(std::string hostname);
 		void		checkServer(std::vector<Server> server);
+		void		analizeRequestLine(std::string requestLine);
 
 	protected:
 		Server				_rightServer;
@@ -32,5 +33,6 @@ class Request
 		std::string 		_accept;
 		std::string 		_hostname;
 		std::string			_bodyLength;
-		int					_body;
+		std::string			_body;
+		int					_headerEnd;
 };
