@@ -5,15 +5,16 @@ Request::Request(void)
 
 Request::Request(std::string request)
 {
-	int pos;
-	char* format;
+	std::string	adress;
 
-	pos = this->findType(request);
+	this->findType(request);
 	_location = this->findInfo(request, _type);
-	_ip = this->findInfo(request, "Host:");
-	findPort(_ip);
+	adress = this->findInfo(request, "Host:");
+	findPort(adress);
 	_connection = this->findInfo(request, "Connection:");
 	_accept = this->findInfo(request, "Accept:");
+	_bodyLength = this->findInfo(request, "Content-Length");
+	_body = request.find("\r\n\r\n");
 }
 
 Request::~Request(void)
@@ -55,7 +56,7 @@ std::string	Request::findInfo(std::string request, std::string toFind)
 
 	pos = request.find(toFind);
 	if (pos == -1)
-		return (0);
+		return ("");
 	begin = pos + toFind.length();
 	while (request[begin] != ' ')
 		begin++;
@@ -66,23 +67,25 @@ std::string	Request::findInfo(std::string request, std::string toFind)
 	return (result);
 }
 
-void	Request::findPort(std::string _ip)
+void	Request::findPort(std::string adress)
 {
 	int pos;
 	std::string port;
 	int num;
 
-	pos = _ip.find(":");
+	pos = adress.find(":");
 	if (pos == -1)
 	{
-		_hostname = _ip;
+		_hostname = adress;
+		_port.first = atoi_ip("localhost");
+		_port.second = 8080;
 		return ;
 	}
-	port.append(_ip, pos + 1);
-	_ip.erase(pos);
-	if (_ip == "localhost")
-		_ip = "127.0.0.1";
-    _port.first = atoi_ip(_ip);
+	port.append(adress, pos + 1);
+	adress.erase(pos);
+	if (adress == "localhost")
+		adress = "127.0.0.1";
+    _port.first = atoi_ip(adress);
 	_port.second = std::stoi(port);
 
 }
@@ -99,6 +102,7 @@ void	Request::checkServer(std::vector<Server> server)
 				return ;
 		}
 	}
+	std::cout << "server not found" << std::endl;
 }
 
 void	Request::printInfoRequest(void) const
@@ -113,5 +117,6 @@ void	Request::printInfoRequest(void) const
 	std::cout << "PORT: " << this->_port.second << std::endl;
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
+	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
 	printServers(temp);
 }

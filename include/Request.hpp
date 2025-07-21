@@ -24,12 +24,13 @@ class Request
 		void		checkServer(std::vector<Server> server);
 
 	protected:
-		Server		_rightServer;
-		std::string _type;
-		std::string	_ip;
+		Server				_rightServer;
+		std::string 		_type;
 		std::pair<int, int> _port;
-		std::string _location;
-		std::string	_connection;
-		std::string _accept;
-		std::string _hostname;
+		std::string 		_location;
+		std::string			_connection;
+		std::string 		_accept;
+		std::string 		_hostname;
+		std::string			_bodyLength;
+		int					_body;
 };
