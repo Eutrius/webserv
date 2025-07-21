@@ -22,6 +22,12 @@ OBJ_DIR = obj
 SRC_DIR = src
 
 SRC = src/main.cpp \
+	  src/Epoll.cpp \
+	  src/main.cpp \
+	  src/Socket.cpp \
+	  src/Webserver.cpp \
+	  src/Request.cpp \
+	  src/parser.cpp \
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 IGN = .gitignore
@@ -34,10 +40,10 @@ $(NAME): $(OBJ)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	@printf "\033[0;37m Generating $(TITLE) objects... %-33.33s\r" $@
+	@printf "\033[0;37m Generating $(TITLE) epolls... %-33.33s\r" $@
 	@$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-RULES = all clean fclean re run valgrind i c 
+RULES = all clean fclean re run valgrind i c
 
 all: $(NAME)
 
@@ -54,7 +60,7 @@ fclean:
 
 re: fclean all
 
-i: 	
+i:
 	@printf "$(IGN)\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
 
 c:
