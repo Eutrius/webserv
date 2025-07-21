@@ -18,6 +18,7 @@ struct Location {
 	std::vector<std::string>	cgi_extension;
 	std::string					root;
 	std::vector<std::string>	index;
+    size_t						client_max_body_size;
 	std::map<int, std::string>	error_page;
 };
 
