@@ -88,7 +88,7 @@ void	Request::findPort(std::string adress)
 	{
 		_hostname = adress;
 		_port.first = atoi_ip("localhost");
-		_port.second = 8080;
+		_port.second = 80;
 		return ;
 	}
 	port.append(adress, pos + 1);
@@ -114,8 +114,6 @@ void	Request::analizeRequestLine(std::string requestLine)
 	check = this->findInfo(requestLine, protocol);
 	if (_location == "" || protocol == "" || check != "")
 		std::cout << "Bad request: invalid request line" << std::endl;
-
-
 }
 
 void	Request::rightFormatLocation(void)
@@ -146,6 +144,8 @@ void	Request::checkInvalidCharacters(std::string to_check)
 
 void	Request::checkServer(std::vector<Server> server)
 {
+	int	check = 0;
+
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it=server[i];
@@ -154,6 +154,7 @@ void	Request::checkServer(std::vector<Server> server)
 			if (it.listen[x].second == _port.second && (it.listen[x].first == _port.first || it.listen[x].first == 0 || _port.first == 0))
 			{
 				_rightServer = it;
+				check = 1;
 				if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
 					return  ;
 				else
@@ -161,8 +162,10 @@ void	Request::checkServer(std::vector<Server> server)
 			}
 		}
 	}
-	if (_rightServer.root == "")
+	if (check == 0)
 		std::cout << "No server found" << std::endl;
+	else
+		lookForLocation(_location);
 }
 
 void	Request::lookForLocation(std::string location)
@@ -172,8 +175,11 @@ void	Request::lookForLocation(std::string location)
 
 	temp = ft_trim(location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
+	{
 		_rightLocation = _rightServer.location[temp];
-	temp.erase(temp.length());
+		return ;
+	}
+	temp.erase(temp.length() - 1);
 	pos = temp.rfind("/");
 	if (pos == -1)
 		std::cout << "404: page not found" << std::endl;
@@ -195,6 +201,6 @@ void	Request::printInfoRequest(void) const
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
 	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
-	std::cout << "LOCATION: " << _rightLocation.upload_dir << std::endl;
+	std::cout << "LOCATION: " << _rightLocation.root << std::endl;
 	printServers(temp);
 }

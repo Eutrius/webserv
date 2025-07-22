@@ -351,6 +351,7 @@ void	validatelocation(locationmap& m, Server& serverx)
 		serverx.location[it->first].autoindex = serverx.autoindex;
 		serverx.location[it->first].methods = serverx.methods;
 		serverx.location[it->first].return_path = std::pair<int, std::string>(); // da 0 a 999
+		serverx.location[it->first].return_path.first = -1;
 		serverx.location[it->first].upload_dir = serverx.upload_dir;
 		serverx.location[it->first].cgi_extension = serverx.cgi_extension;
 		serverx.location[it->first].root = serverx.root;
