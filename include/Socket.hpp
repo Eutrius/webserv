@@ -17,6 +17,8 @@ class Socket
   public:
     Socket(const int &host, const int &port);
     ~Socket(void);
+
+    Socket &operator=(const Socket &other);
     void close(void);
     int getFd(void) const;
     int accept(void);

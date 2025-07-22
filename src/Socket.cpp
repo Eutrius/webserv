@@ -3,10 +3,10 @@
 
 Socket::Socket(const int &host, const int &port)
 {
-	struct sockaddr_in address;
-	_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (_fd < 0)
-		throw std::runtime_error("Socket: failed to create socket");
+    struct sockaddr_in address;
+    _fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (_fd < 0)
+        throw std::runtime_error("Socket: failed to create socket");
 
     int opt = 1;
     if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
@@ -45,6 +45,12 @@ void Socket::close(void)
     ::close(_fd);
 }
 
+Socket &Socket::operator=(const Socket &other)
+{
+    _fd = other._fd;
+    return (*this);
+}
+
 int Socket::getFd(void) const
 {
     return (_fd);
@@ -54,5 +60,13 @@ int Socket::accept(void)
 {
     struct sockaddr_in clientAdress;
     int clientAdressLen = sizeof(clientAdress);
-    return (::accept(_fd, (struct sockaddr *)&clientAdress, (socklen_t *)&clientAdressLen));
+    int clientFd = ::accept(_fd, (struct sockaddr *)&clientAdress, (socklen_t *)&clientAdressLen);
+
+    if (fcntl(clientFd, F_SETFL, O_NONBLOCK) < 0)
+    {
+        ::close(clientFd);
+        return (-1);
+    }
+
+    return (clientFd);
 }

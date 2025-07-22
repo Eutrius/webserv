@@ -1,6 +1,7 @@
 #include "Epoll.hpp"
 #include "Request.hpp"
 #include "Socket.hpp"
+#include "map"
 #include <netinet/in.h>
 #include <set>
 #include <stdio.h>
@@ -11,10 +12,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define PORT "8080"
-#define HOST "127.0.0.1"
+#define BUFFER_SIZE 8192
 
-static bool parseConfig(int argc, char const *argv[], std::vector<Server> &Servers)
+static bool parseConfig(int argc, char const *argv[], std::vector<Server> &servers)
 {
 
     if (argc != 2)
@@ -35,7 +35,7 @@ static bool parseConfig(int argc, char const *argv[], std::vector<Server> &Serve
     }
     try
     {
-        readFileAsString(file, Servers);
+        readFileAsString(file, servers);
     }
     catch (std::exception &e)
     {
@@ -50,17 +50,14 @@ static bool parseConfig(int argc, char const *argv[], std::vector<Server> &Serve
 int main(int argc, char const *argv[])
 {
     std::vector<Server> servers;
-    std::vector<Socket *> sockets;
-
-    Epoll epoll;
-    std::set<std::pair<int, int> > uniqueListen;
-
     if (!parseConfig(argc, argv, servers))
         return (1);
 
+    std::set<std::pair<int, int> > uniqueListen;
     for (size_t i = 0; i < servers.size(); i++)
         uniqueListen.insert(servers[i].listen.begin(), servers[i].listen.end());
 
+    std::vector<Socket *> sockets;
     try
     {
         std::set<std::pair<int, int> >::iterator it;
@@ -75,52 +72,66 @@ int main(int argc, char const *argv[])
         std::cout << e.what() << std::endl;
     }
 
-    struct epoll_event *events;
-    int nr_events;
-    int new_socket;
-
-    std::string hello = "HTTP/1.1 200 OK\r\n"
-                        "Content-Type: text/plain\r\n"
-                        "Content-Length: 15\r\n"
-                        "Connection: close\r\n"
-                        "\r\n"
-                        "Hello, browser!";
-
+    Epoll epoll;
     for (size_t i = 0; i < sockets.size(); i++)
     {
         int fd = sockets[i]->getFd();
         epoll.add_fd(fd);
     }
-    char buffer[3000] = {0};
+
+    std::map<int, std::string> buffers;
+    char buffer[BUFFER_SIZE];
+    (void)buffer;
     while (1)
     {
-        nr_events = epoll.wait();
-        events = epoll.getEvents();
-        for (int i = 0; i < nr_events; i++)
+        int nEvents = epoll.wait();
+        struct epoll_event *events = epoll.getEvents();
+        for (int i = 0; i < nEvents; i++)
         {
-            for (size_t j = 0; j < sockets.size(); j++)
+
+            int fd = events[i].data.fd;
+            uint32_t eventFlags = events[i].events;
+            if (eventFlags & (EPOLLHUP | EPOLLERR))
+            {
+                epoll.remove_fd(fd);
+                buffers.erase(fd);
+                close(fd);
+                continue;
+            }
+
+            bool isServerFd = false;
+            size_t j;
+            for (j = 0; j < sockets.size(); j++)
             {
                 if (events[i].data.fd == sockets[j]->getFd())
                 {
-                    new_socket = sockets[j]->accept();
-                    if (new_socket < 0)
-                        break;
-                    epoll.add_fd(new_socket);
+                    isServerFd = true;
+                    break;
                 }
             }
-            int valread = read(events[i].data.fd, buffer, 3000);
-            if (valread <= 0)
-                continue;
-            else
+
+            if (isServerFd && (eventFlags & EPOLLIN))
             {
-                printf("\n%s\n", buffer);
-                Request request(buffer);
-                request.checkServer(servers);
-                request.printInfoRequest();
-                memset(buffer, 0, 3000);
-                write(events[i].data.fd, hello.c_str(), hello.size());
+                int clientFd = sockets[j]->accept();
+                if (clientFd > 0)
+                    epoll.add_fd(clientFd);
             }
-            printf("------------------Hello message sent-------------------\n");
+            else if (eventFlags & EPOLLIN)
+            {
+                char buffer[BUFFER_SIZE];
+                int bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
+                if (bytes_read > 0)
+                {
+                    buffers[fd].append(buffer, bytes_read);
+                }
+                else
+                {
+                    epoll.remove_fd(fd);
+                    buffers.erase(fd);
+                    close(fd);
+                }
+                // if (buffer)
+            }
         }
     }
     return (0);
