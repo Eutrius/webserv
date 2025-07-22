@@ -13,7 +13,7 @@
 NAME = webserv
 TITLE = Web Server
 
-CC = g++
+CC = g++ -g
 CFLAGS = -Wall -Werror -Wextra -std=c++98
 INCLUDE = -I include
 RM = rm -rf
@@ -23,10 +23,9 @@ SRC_DIR = src
 
 SRC = src/main.cpp \
 	  src/Epoll.cpp \
-	  src/main.cpp \
 	  src/Socket.cpp \
-	  src/Webserver.cpp \
 	  src/Request.cpp \
+	  src/Response.cpp \
 	  src/parser.cpp \
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
@@ -61,7 +60,7 @@ fclean:
 re: fclean all
 
 i:
-	@printf "$(IGN)\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
+	@printf "$(IGN)\n.git\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
 
 c:
 	@compiledb make --no-print-directory re
