@@ -1,20 +1,8 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: jyriarte <jyriarte@student.42.fr>          +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2025/04/29 16:42:22 by jyriarte          #+#    #+#              #
-#    Updated: 2025/07/09 15:06:34 by jyriarte         ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
-
 NAME = webserv
 TITLE = Web Server
 
-CC = g++ -g
-CFLAGS = -Wall -Werror -Wextra -std=c++98
+CC = g++
+CFLAGS = -Wall -Werror -Wextra -std=c++98 -g
 INCLUDE = -I include
 RM = rm -rf
 
