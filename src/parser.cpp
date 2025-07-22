@@ -178,7 +178,10 @@ void printServers(const std::vector<Server>& servers) {
         for (std::map<int, std::string>::const_iterator it = s.error_page.begin(); it != s.error_page.end(); ++it)
             std::cout << "  [" << it->first << "] => " << it->second << "\n";
 
-        std::cout << "locations:\n";
+		if (s.location.size())
+			std::cout << "locations:\n";
+		else
+			std::cout << "no locations.\n";
         for (std::map<std::string, Location>::const_iterator lit = s.location.begin(); lit != s.location.end(); ++lit) {
             const std::string& path = lit->first;
             const Location& loc = lit->second;
@@ -188,6 +191,7 @@ void printServers(const std::vector<Server>& servers) {
             std::cout << "    methods: " << loc.methods << "\n";
             std::cout << "    return_path: (" << loc.return_path.first << ", " << loc.return_path.second << ")\n";
             std::cout << "    upload_dir: " << loc.upload_dir << "\n";
+			std::cout << "    client_max_body_size: " << loc.client_max_body_size << "\n";
             std::cout << "    root: " << loc.root << "\n";
 
             std::cout << "    index: ";
@@ -208,8 +212,6 @@ void printServers(const std::vector<Server>& servers) {
         std::cout << "\n";
     }
 }
-
-
 
 
 
@@ -349,10 +351,12 @@ void	validatelocation(locationmap& m, Server& serverx)
 		serverx.location[it->first].autoindex = serverx.autoindex;
 		serverx.location[it->first].methods = serverx.methods;
 		serverx.location[it->first].return_path = std::pair<int, std::string>(); // da 0 a 999
+		serverx.location[it->first].return_path.first = -1;
 		serverx.location[it->first].upload_dir = serverx.upload_dir;
 		serverx.location[it->first].cgi_extension = serverx.cgi_extension;
 		serverx.location[it->first].root = serverx.root;
 		serverx.location[it->first].index = serverx.index;
+		serverx.location[it->first].client_max_body_size = serverx.client_max_body_size;
 		serverx.location[it->first].error_page = serverx.error_page;
 		for (MapStringToVector::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
 		{ // chiave jt->first; valore jt->second
@@ -368,6 +372,8 @@ void	validatelocation(locationmap& m, Server& serverx)
 				checkUpload_dir(jt->second, serverx.location[it->first].upload_dir);
 			else if (jt->first == "cgi_extension")
 				checkCgi_extension(jt->second, serverx.location[it->first].cgi_extension);
+			else if (jt->first == "client_max_body_size")
+				checkClient_max_body_size(jt->second, serverx.location[it->first].client_max_body_size);
 			else if (jt->first.length() == 3 && isdigit(jt->first[0]) && isdigit(jt->first[1]) && isdigit(jt->first[2]))
 				checkError_page(jt->second, serverx.location[it->first].error_page, stringToInt(jt->first));
 			else if (jt->first == "return")
@@ -437,20 +443,17 @@ void removeLocationInPlace(std::string& input) {
     size_t pos = 0;
     size_t start_pos, end_pos;
 
-    while (pos != std::string::npos && pos < input.find('}')) {
-	start_pos = input.find("location ", pos); //to do assicurarsi che prima ci sia " ;}"
-
-        if (start_pos == std::string::npos)
-            break;
-
-        end_pos = input.find('}', start_pos);
-
-        if (end_pos == std::string::npos)
-            break;
-
-        input.erase(start_pos, end_pos - start_pos + 1);
-
-        pos = input.find("location ", pos);
+    while (input.find("location ", pos) != std::string::npos)
+	{
+		start_pos = input.find("location ", pos); //to do: assicurarsi che prima ci sia " ;}"
+		end_pos = input.find_first_not_of(' ', start_pos);
+		end_pos = input.find('{', end_pos);
+		if (input.substr(start_pos, end_pos - start_pos + 1).find(";") == std::string::npos)
+		{
+			end_pos = input.find('}', end_pos);
+			input.erase(start_pos, end_pos - start_pos + 1);
+		}
+		pos = start_pos + 1;
     }
 }
 
@@ -529,10 +532,7 @@ void splitStringToMap(const std::string& input, std::map<std::string, std::vecto
 	if (tokens[0] == "error_page")
 	{
 		if (tokens.size() < 3)
-		{
-			std::cerr << "error8\n";
-			std::exit(EXIT_FAILURE);
-		}
+			throw std::runtime_error("invalid number of arguments in \"error_page\" directive");
 		for (size_t i = 1; i < tokens.size() - 1; ++i)
 		{
 			if (result.find(tokens[i]) == result.end())
@@ -579,28 +579,19 @@ void	parseinserver(std::string& file, Server& serverx)
 
         std::vector<size_t> candidates;
 
-        if (pos1 == npos)
-        {
-		    std::cerr << "error7\n";
-		    std::exit(EXIT_FAILURE);
-        }
         file_copia = file_copia.substr(pos1 + 8);
         pos1 = file_copia.find_first_not_of(" ");
         pos2 = file_copia.find("{");
+		if (file_copia.substr(0,pos2).find(";") != npos)
+			continue;
         if (pos2 == npos || pos1 == pos2)
-        {
-		    std::cerr << "error6\n";
-		    std::exit(EXIT_FAILURE);
-        }
+			throw std::runtime_error("location section need an argument and \"{\"");
         std::string key = ft_trim(file_copia.substr(pos1,pos2-1));
         file_copia = file_copia.substr(pos2 + 1);
         pos1 = file_copia.find(";");
         pos2 = file_copia.find("}");
         if (pos1 == npos || pos2 == npos || pos2 < pos1)
-        {
-		    std::cerr << "error5\n";
-		    std::exit(EXIT_FAILURE);
-        }
+			throw std::runtime_error("location section needs to end with \";}\"");
         while (file_copia.find_first_of("}") != file_copia.find_first_not_of(" "))
 	    {
 			if (file_copia.find("}") == npos || file_copia.find("}") < file_copia.find(";") || file_copia.find("}") < file_copia.find(";"))
@@ -609,12 +600,13 @@ void	parseinserver(std::string& file, Server& serverx)
 		    i = file_copia.find_first_of(";");
 		    file_copia = file_copia.substr(i+1);
 	    }
-		file_copia = file_copia.substr(file_copia.find_first_of("}")+1);
         if (mappa_location.find(key) != mappa_location.end())
-        {
-		    std::cerr << "error19\n";
-		    std::exit(EXIT_FAILURE);
-        }
+			throw std::runtime_error("location is duplicate");
+		if (key.find(" ") != npos)
+			throw std::runtime_error("location directive takes one argument and one block {}");
+		if (key.find(";") != npos)
+			throw std::runtime_error("directive \"location\" has no opening \"{\"");
+		file_copia = file_copia.substr(file_copia.find_first_of("}")+1);
         mappa_location[key] = mappa2;
     }
     removeLocationInPlace(file);
@@ -640,27 +632,20 @@ void parse(std::string file, std::vector<Server>& main_vector)
 	while(file.find_first_not_of(" ") != npos)
 	{
 		i = file.find_first_not_of(" ");
-		if (i + 6 > file.size() || file.compare(i, 6, "server"))
+		if (i == std::string::npos || file.compare(i, 6, "server"))
 			throw std::runtime_error("unknown directive in file");
 		file = file.substr(i+6);
 		i = file.find_first_not_of(" ");
-		if (i + 1 > file.size() || file.compare(i, 1, "{"))
-        {
-		    std::cerr << "error12\n";
-		    std::exit(EXIT_FAILURE);
-        }
+		if (i == std::string::npos || file.compare(i, 1, "{"))
+			throw std::runtime_error("location directive need {");
 		file = file.substr(i+1);
 		main_vector.resize(main_vector.size()+1);
 		parseinserver(file, main_vector[j]);
 		j++;
         i = file.find_first_not_of(" ");
-        if (file[i] != '}')
-        {
-		    std::cerr << "error13\n";
-		    std::exit(EXIT_FAILURE);
-        }
+        if (file[i] != '}') //forse superflua
+			throw std::runtime_error(" unexpected end of file, expecting \"}\"");
         file = file.substr(i+1);
-        std::cout << "\n\n\n\n++++++++++++++++++++++++++++\n\n\n\n";
 	}
 	checkServerNames(main_vector);
 	printServers(main_vector);

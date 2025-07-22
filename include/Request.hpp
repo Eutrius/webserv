@@ -11,30 +11,36 @@
 class Request
 {
 	public:
-		Request(void);
 		Request(std::string request);
-		virtual ~Request(void);
+		~Request(void);
 
 		std::string	getType(void) const;
-		void		parsingInput(std::string request);
-		void		findType(std::string request);
-		std::string	findInfo(std::string request, std::string toFind);
 		void		printInfoRequest(void) const;
-		void		findPort(std::string hostname);
 		void		checkServer(std::vector<Server> server);
-		void		analizeRequestLine(std::string requestLine);
-		void		lookForLocation(void);
 
-	protected:
+	private:
+		void		findType(std::string request);
+		void		findPort(std::string hostname);
+		void		analizeRequestLine(std::string requestLine);
+		void		lookForLocation(std::string location);
+		void		rightFormatLocation(void);
+		void		checkInvalidCharacters(std::string to_check);
+		void		checkOnLocation(void);
+
 		Server				_rightServer;
-		Location			_rightLocation;
+		std::string			_rightLocation;
+		std::string			_rightDir;
+		std::string 		_hostname;
 		std::string 		_type;
 		std::pair<int, int> _port;
 		std::string 		_location;
 		std::string			_connection;
 		std::string 		_accept;
-		std::string 		_hostname;
 		std::string			_bodyLength;
 		std::string			_body;
 		int					_headerEnd;
+		int					status;
 };
+
+std::string	findInfo(std::string request, std::string toFind);
+bool		checkBody(std::string request);

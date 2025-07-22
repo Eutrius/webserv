@@ -18,21 +18,22 @@ struct Location {
 	std::vector<std::string>	cgi_extension;
 	std::string					root;
 	std::vector<std::string>	index;
+    size_t						client_max_body_size;
 	std::map<int, std::string>	error_page;
 };
 
 struct Server {
-    std::vector<std::string>		server_name;
-    std::vector<std::string>		index;
+    std::vector<std::string>					server_name;
+    std::vector<std::string>					index;
     std::vector<std::pair<int, int> >			listen; // tra 1-65535
-    std::string						root;
-    std::string						upload_dir;
-    bool							autoindex;
-    std::vector<std::string>		cgi_extension;
-    int								methods;
-    size_t							client_max_body_size;
-    std::map<int, std::string>		error_page;     //must be between 300 and 599
-    std::map<std::string, Location>	location;
+    std::string									root;
+    std::string									upload_dir;
+    bool										autoindex;
+    std::vector<std::string>					cgi_extension;
+    int											methods;
+    size_t										client_max_body_size;
+    std::map<int, std::string>					error_page;     //must be between 300 and 599
+    std::map<std::string, Location>				location;
 };
 
 void readFileAsString(std::ifstream& file, std::vector<Server>& main_vector);
