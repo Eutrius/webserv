@@ -19,16 +19,17 @@ class Request
 		void		checkServer(std::vector<Server> server);
 
 	private:
-		std::string	findInfo(std::string request, std::string toFind);
 		void		findType(std::string request);
 		void		findPort(std::string hostname);
 		void		analizeRequestLine(std::string requestLine);
 		void		lookForLocation(std::string location);
 		void		rightFormatLocation(void);
 		void		checkInvalidCharacters(std::string to_check);
+		void		checkOnLocation(void);
 
 		Server				_rightServer;
-		Location			_rightLocation;
+		std::string			_rightLocation;
+		std::string			_rightDir;
 		std::string 		_hostname;
 		std::string 		_type;
 		std::pair<int, int> _port;
@@ -40,3 +41,6 @@ class Request
 		int					_headerEnd;
 		int					status;
 };
+
+std::string	findInfo(std::string request, std::string toFind);
+bool		checkBody(std::string request);

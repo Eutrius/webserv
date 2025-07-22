@@ -1,28 +1,26 @@
 #include "Request.hpp"
 
-Request::Request(std::string request)
+Request::Request(std::string request) : status(200)
 {
-
 	std::string	adress;
 	std::string requestLine = request.substr(0, request.find("\n"));
-
 	try
 	{
 		checkInvalidCharacters(request);
 		analizeRequestLine(requestLine);
-		adress = this->findInfo(request, "Host:");
+		adress = findInfo(request, "Host:");
 		if (adress == "")
 		{
 			status = 400;
 			throw std::runtime_error("Bad request: Host not found\n");
 		}
 		findPort(adress);
-		_connection = this->findInfo(request, "Connection:");
-		_accept = this->findInfo(request, "Accept:");
+		_connection = findInfo(request, "Connection:");
+		_accept = findInfo(request, "Accept:");
 		_bodyLength = findInfo(request, "Content-Length");
 		_headerEnd = request.find("\r\n\r\n");
-		_body = request.substr(_headerEnd);
-		if (_bodyLength != "" && std::atoi(_bodyLength.c_str()) != (int)_body.length())
+		_body = request.substr(_headerEnd + 4);
+		if (std::atoi(_bodyLength.c_str()) != (int)_body.length())
 		{
 			status = 400;
 			throw std::runtime_error("Bad request: Invalid body Lenght\n");
@@ -73,27 +71,7 @@ void	Request::findType(std::string request)
 	throw std::runtime_error("Method not allowed\n");
 }
 
-std::string	Request::findInfo(std::string request, std::string toFind)
-{
-	int	end;
-	int begin;
-	int pos;
-	std::string	result;
 
-	pos = request.find(toFind);
-	if (pos == -1)
-		return ("");
-	begin = pos + toFind.length();
-	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n')
-		begin++;
-	if (request[begin] == '\r' || request[begin] == '\n')
-		return ("");
-	end = begin + 1;
-	while (request[end] != ' ' && request[end] != '\n' && request[end] != '\r')
-		end++;
-	result.append(request, begin + 1, end - begin - 1);
-	return (result);
-}
 
 void	Request::findPort(std::string adress)
 {
@@ -123,15 +101,15 @@ void	Request::analizeRequestLine(std::string requestLine)
 	std::string check;
 
 	this->findType(requestLine);
-	_location = this->findInfo(requestLine, _type);
+	_location = findInfo(requestLine, _type);
 	rightFormatLocation();
-	protocol = this->findInfo(requestLine, _location);
+	protocol = findInfo(requestLine, _location);
 	if (protocol != "HTTP/1.1")
 	{
 		status = 505;
 		throw std::runtime_error("Invalid HTTP Protocol\n");
 	}
-	check = this->findInfo(requestLine, protocol);
+	check = findInfo(requestLine, protocol);
 	if (_location == "" || protocol == "" || check != "")
 	{
 		status = 400;
@@ -208,7 +186,7 @@ void	Request::lookForLocation(std::string location)
 	temp = ft_trim(location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
 	{
-		_rightLocation = _rightServer.location[temp];
+		_rightLocation = temp;
 		return ;
 	}
 	temp.erase(temp.length() - 1);
@@ -219,9 +197,21 @@ void	Request::lookForLocation(std::string location)
 		throw std::runtime_error("Location not found\n");
 	}
 	else
+	{
 		lookForLocation(temp.substr(0, pos));
+		checkOnLocation();
+	}
 }
 
+
+void	Request::checkOnLocation(void)
+{
+	int pos;
+
+	pos = _location.find(_rightLocation);
+	_rightDir = _location.replace(pos, _location.length(), _rightServer.location[_rightDir].root);
+	std::cout << "DIR: " << _rightDir << std::endl;
+}
 
 void	Request::printInfoRequest(void) const
 {
@@ -236,7 +226,45 @@ void	Request::printInfoRequest(void) const
 	std::cout << "CONNECTION: " << this->_connection << std::endl;
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
 	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
-	std::cout << "LOCATION: " << _rightLocation.root << std::endl;
-	std::cout << "STATUS: " << status << std::endl;
+	std::cout << "LOCATION: " << _rightLocation << std::endl;
+	std::cout << "STATUS: " << status << std::endl << std::endl;
 	printServers(temp);
+}
+
+bool	checkBody(std::string request)
+{
+	std::string	body;
+	int			headerEnd;
+	int			bodyLength;
+
+	headerEnd = request.find("\r\n\r\n");
+	if (headerEnd == -1)
+		return false;
+	body = request.substr(headerEnd + 4);
+	bodyLength = std::atoi(findInfo(request, "Content-Length").c_str());
+	if ((int)body.length() < bodyLength)
+		return false;
+	return true;
+}
+
+std::string	findInfo(std::string request, std::string toFind)
+{
+	int	end;
+	int begin;
+	int pos;
+	std::string	result;
+
+	pos = request.find(toFind);
+	if (pos == -1)
+		return ("");
+	begin = pos + toFind.length();
+	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n')
+		begin++;
+	if (request[begin] == '\r' || request[begin] == '\n')
+		return ("");
+	end = begin + 1;
+	while (request[end] != ' ' && request[end] != '\n' && request[end] != '\r')
+		end++;
+	result.append(request, begin + 1, end - begin - 1);
+	return (result);
 }
