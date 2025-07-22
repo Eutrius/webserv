@@ -1,18 +1,16 @@
 #include "Request.hpp"
 
-Request::Request(void)
-{}
-
 Request::Request(std::string request)
 {
 
 	std::string	adress;
 	std::string requestLine = request.substr(0, request.find("\n"));
 
+	checkInvalidCharacters(request);
 	analizeRequestLine(requestLine);
 	adress = this->findInfo(request, "Host:");
 	if (adress == "")
-		std::cout << "Bad Request" << std::endl;
+		std::cout << "Bad Request: no adress" << std::endl;
 	findPort(adress);
 	_connection = this->findInfo(request, "Connection:");
 	_accept = this->findInfo(request, "Accept:");
@@ -22,7 +20,7 @@ Request::Request(std::string request)
 	if (_bodyLength != "" && std::atoi(_bodyLength.c_str()) != (int)_body.length())
 		std::cout << "Invalid body Lenght" << std::endl;
 	if (_headerEnd == -1)
-		std::cout << "Bad request" << std::endl;
+		std::cout << "Bad request: no header end" << std::endl;
 }
 
 Request::~Request(void)
@@ -109,13 +107,41 @@ void	Request::analizeRequestLine(std::string requestLine)
 
 	this->findType(requestLine);
 	_location = this->findInfo(requestLine, _type);
+	rightFormatLocation();
 	protocol = this->findInfo(requestLine, _location);
-	check = this->findInfo(requestLine, protocol);
-	if (_location == "" || protocol == "" || check != "")
-		std::cout << "Bad request" << std::endl;
 	if (protocol != "HTTP/1.1")
 		std::cout << "Invalid HTTP Protocol" << std::endl;
+	check = this->findInfo(requestLine, protocol);
+	if (_location == "" || protocol == "" || check != "")
+		std::cout << "Bad request: invalid request line" << std::endl;
 
+
+}
+
+void	Request::rightFormatLocation(void)
+{
+	size_t	pos;
+
+	if (_location[0] != '/')
+		std::cout << "Bad request: no slash" << std::endl;
+	pos = _location.find("%20");
+	while (pos != std::string::npos)
+	{
+		_location.replace(pos, 3, " ");
+		pos = _location.find("%20");
+	}
+}
+
+void	Request::checkInvalidCharacters(std::string to_check)
+{
+	for (size_t i = 0; i < to_check.length(); i++)
+	{
+		char c = to_check[i];
+		if (c == '\r' || c == '\n')
+			continue ;
+		else if (c <= 31 || c >= 127 || c == '>' || c == '<'  || c == '"')
+			std::cout << "Bad request: invalid character" << std::endl;
+	}
 }
 
 void	Request::checkServer(std::vector<Server> server)
@@ -135,23 +161,20 @@ void	Request::checkServer(std::vector<Server> server)
 			}
 		}
 	}
+	if (_rightServer.root == "")
+		std::cout << "No server found" << std::endl;
 }
 
-void	Request::lookForLocation(void)
+void	Request::lookForLocation(std::string location)
 {
-	std::string	temp;
+	std::string temp;
 	int			pos;
 
 	temp = ft_trim(_location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
 		_rightLocation = _rightServer.location[temp];
-	pos = _location.rfind('/');
-	if (pos == -1)
-		std::cout << "404: file not found" << std::endl;
-	temp.erase(pos);
-	if (_rightServer.location.find(temp) != _rightServer.location.end())
-		_rightLocation = _rightServer.location[temp];;
-	std::cout << "404: file not found" << std::endl;
+	temp.erase(temp.length());
+	pos = temp.rfind('//');
 }
 
 
