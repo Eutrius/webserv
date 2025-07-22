@@ -76,7 +76,7 @@ int main(int argc, char const *argv[])
 	for (size_t i = 0; i < sockets.size(); i++)
 	{
 		int fd = sockets[i]->getFd();
-		epoll.add_fd(fd);
+		epoll.addFd(fd);
 	}
 
 	std::map<int, std::string> buffers;
@@ -92,7 +92,7 @@ int main(int argc, char const *argv[])
 			uint32_t eventFlags = events[i].events;
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
 			{
-				epoll.remove_fd(fd);
+				epoll.removeFd(fd);
 				buffers.erase(fd);
 				close(fd);
 				continue;
@@ -113,7 +113,7 @@ int main(int argc, char const *argv[])
 			{
 				int clientFd = sockets[j]->accept();
 				if (clientFd > 0)
-					epoll.add_fd(clientFd);
+					epoll.addFd(clientFd);
 			}
 			else if (eventFlags & EPOLLIN)
 			{
@@ -126,25 +126,21 @@ int main(int argc, char const *argv[])
 				}
 				else
 				{
-					epoll.remove_fd(fd);
+					epoll.removeFd(fd);
 					buffers.erase(fd);
 					close(fd);
+					continue;
 				}
-				Request request(buffer);
-				if (buffer)
+
+				if (checkBody(buffers[fd]))
 				{
-					try
-					{
-						request.checkServer(servers);
-						request.printInfoRequest();
-					}
-					catch(const std::exception& e)
-					{
-						std::cerr << e.what() << '\n';
-					}
-
+					Request req(buffers[fd]);
+					buffers.erase(fd);
+					epoll.modifyFd(fd, EPOLLOUT);
 				}
-
+			}
+			else if (eventFlags & EPOLLOUT)
+			{
 			}
 		}
 	}
