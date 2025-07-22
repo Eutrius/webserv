@@ -6,21 +6,37 @@ Request::Request(std::string request)
 	std::string	adress;
 	std::string requestLine = request.substr(0, request.find("\n"));
 
-	checkInvalidCharacters(request);
-	analizeRequestLine(requestLine);
-	adress = this->findInfo(request, "Host:");
-	if (adress == "")
-		std::cout << "Bad Request: no adress" << std::endl;
-	findPort(adress);
-	_connection = this->findInfo(request, "Connection:");
-	_accept = this->findInfo(request, "Accept:");
-	_bodyLength = findInfo(request, "Content-Length");
-	_headerEnd = request.find("\r\n\r\n");
-	_body = request.substr(_headerEnd);
-	if (_bodyLength != "" && std::atoi(_bodyLength.c_str()) != (int)_body.length())
-		std::cout << "Invalid body Lenght" << std::endl;
-	if (_headerEnd == -1)
-		std::cout << "Bad request: no header end" << std::endl;
+	try
+	{
+		checkInvalidCharacters(request);
+		analizeRequestLine(requestLine);
+		adress = this->findInfo(request, "Host:");
+		if (adress == "")
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: Host not found\n");
+		}
+		findPort(adress);
+		_connection = this->findInfo(request, "Connection:");
+		_accept = this->findInfo(request, "Accept:");
+		_bodyLength = findInfo(request, "Content-Length");
+		_headerEnd = request.find("\r\n\r\n");
+		_body = request.substr(_headerEnd);
+		if (_bodyLength != "" && std::atoi(_bodyLength.c_str()) != (int)_body.length())
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: Invalid body Lenght\n");
+		}
+		if (_headerEnd == -1)
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: no end of file\n");
+		}
+	}
+	catch (std::exception& error)
+	{
+		std::cout << error.what() << std::endl;
+	}
 }
 
 Request::~Request(void)
@@ -53,7 +69,8 @@ void	Request::findType(std::string request)
 		_type = "DELETE";
 		return ;
 	}
-	std::cout << "Invalid Method" << std::endl;
+	status = 405;
+	throw std::runtime_error("Method not allowed\n");
 }
 
 std::string	Request::findInfo(std::string request, std::string toFind)
@@ -110,10 +127,16 @@ void	Request::analizeRequestLine(std::string requestLine)
 	rightFormatLocation();
 	protocol = this->findInfo(requestLine, _location);
 	if (protocol != "HTTP/1.1")
-		std::cout << "Invalid HTTP Protocol" << std::endl;
+	{
+		status = 505;
+		throw std::runtime_error("Invalid HTTP Protocol\n");
+	}
 	check = this->findInfo(requestLine, protocol);
 	if (_location == "" || protocol == "" || check != "")
-		std::cout << "Bad request: invalid request line" << std::endl;
+	{
+		status = 400;
+		throw std::runtime_error("Bad request: invalid request line\n");
+	}
 }
 
 void	Request::rightFormatLocation(void)
@@ -121,7 +144,10 @@ void	Request::rightFormatLocation(void)
 	size_t	pos;
 
 	if (_location[0] != '/')
-		std::cout << "Bad request: no slash" << std::endl;
+	{
+		status = 400;
+		throw std::runtime_error("Bad request: no slash in URI\n");
+	}
 	pos = _location.find("%20");
 	while (pos != std::string::npos)
 	{
@@ -138,7 +164,10 @@ void	Request::checkInvalidCharacters(std::string to_check)
 		if (c == '\r' || c == '\n')
 			continue ;
 		else if (c <= 31 || c >= 127 || c == '>' || c == '<'  || c == '"')
-			std::cout << "Bad request: invalid character" << std::endl;
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: invalid character found\n");
+		}
 	}
 }
 
@@ -163,7 +192,10 @@ void	Request::checkServer(std::vector<Server> server)
 		}
 	}
 	if (check == 0)
-		std::cout << "No server found" << std::endl;
+	{
+		status = 404;
+		throw std::runtime_error("Server not found\n");
+	}
 	else
 		lookForLocation(_location);
 }
@@ -182,7 +214,10 @@ void	Request::lookForLocation(std::string location)
 	temp.erase(temp.length() - 1);
 	pos = temp.rfind("/");
 	if (pos == -1)
-		std::cout << "404: page not found" << std::endl;
+	{
+		status = 404;
+		throw std::runtime_error("Location not found\n");
+	}
 	else
 		lookForLocation(temp.substr(0, pos));
 }
@@ -202,5 +237,6 @@ void	Request::printInfoRequest(void) const
 	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
 	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
 	std::cout << "LOCATION: " << _rightLocation.root << std::endl;
+	std::cout << "STATUS: " << status << std::endl;
 	printServers(temp);
 }

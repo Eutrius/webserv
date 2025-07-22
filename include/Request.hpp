@@ -38,4 +38,5 @@ class Request
 		std::string			_bodyLength;
 		std::string			_body;
 		int					_headerEnd;
+		int					status;
 };
