@@ -170,11 +170,15 @@ void	Request::lookForLocation(std::string location)
 	std::string temp;
 	int			pos;
 
-	temp = ft_trim(_location);
+	temp = ft_trim(location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
 		_rightLocation = _rightServer.location[temp];
 	temp.erase(temp.length());
-	pos = temp.rfind('//');
+	pos = temp.rfind("/");
+	if (pos == -1)
+		std::cout << "404: page not found" << std::endl;
+	else
+		lookForLocation(temp.substr(0, pos));
 }
 
 
