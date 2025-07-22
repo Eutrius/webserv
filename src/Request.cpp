@@ -209,8 +209,7 @@ void	Request::checkOnLocation(void)
 	int pos;
 
 	pos = _location.find(_rightLocation);
-	_rightDir = _location.replace(pos, _location.length(), _rightServer.location[_rightDir].root);
-	std::cout << "DIR: " << _rightDir << std::endl;
+	_location.replace(pos, _rightLocation.length() - 1, _rightServer.location[_rightLocation].root);
 }
 
 void	Request::printInfoRequest(void) const

@@ -29,7 +29,6 @@ class Request
 
 		Server				_rightServer;
 		std::string			_rightLocation;
-		std::string			_rightDir;
 		std::string 		_hostname;
 		std::string 		_type;
 		std::pair<int, int> _port;
