@@ -9,6 +9,7 @@
 #include <set>
 #include "Epoll.hpp"
 #include "Request.hpp"
+#include "Response.hpp"
 #include "Socket.hpp"
 #include "map"
 #include "parser.hpp"
@@ -79,7 +80,10 @@ int main(int argc, char const *argv[])
 		epoll.addFd(fd);
 	}
 
-	std::map<int, std::string> buffers;
+	std::map<int, std::string> requests;
+	std::map<int, std::string> responses;
+	std::map<int, size_t> sent;
+	std::map<int, time_t> lastActivity;
 	char buffer[BUFFER_SIZE];
 	(void) buffer;
 	while (1)
@@ -93,7 +97,8 @@ int main(int argc, char const *argv[])
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
 			{
 				epoll.removeFd(fd);
-				buffers.erase(fd);
+				requests.erase(fd);
+				responses.erase(fd);
 				close(fd);
 				continue;
 			}
@@ -122,25 +127,42 @@ int main(int argc, char const *argv[])
 				std::cout << buffer << std::endl;
 				if (bytes_read > 0)
 				{
-					buffers[fd].append(buffer, bytes_read);
+					requests[fd].append(buffer, bytes_read);
+					lastActivity[fd] = time(NULL);
 				}
 				else
 				{
 					epoll.removeFd(fd);
-					buffers.erase(fd);
+					requests.erase(fd);
+					responses.erase(fd);
 					close(fd);
-					continue;
 				}
-
-				if (checkBody(buffers[fd]))
+				if (checkBody(requests[fd]))
 				{
-					Request req(buffers[fd]);
-					buffers.erase(fd);
+					Request req(requests[fd]);
+					std::cout << requests[fd] << std::endl;
+					requests.erase(fd);
+					Response res;
+					responses[fd] = res.getCompleteResponse();
 					epoll.modifyFd(fd, EPOLLOUT);
 				}
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
+				int bytes_sent = send(fd, responses[fd].c_str() + sent[fd], responses[fd].length() - sent[fd], 0);
+				if (bytes_sent > 0)
+				{
+					sent[fd] += bytes_sent;
+					lastActivity[fd] = time(NULL);
+				}
+
+				if (bytes_sent <= 0 || sent[fd] > responses[fd].length())
+				{
+					epoll.removeFd(fd);
+					responses.erase(fd);
+					sent.erase(fd);
+					close(fd);
+				}
 			}
 		}
 	}
