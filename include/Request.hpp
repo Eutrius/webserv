@@ -11,22 +11,23 @@
 class Request
 {
    public:
-	Request(std::string request);
-	~Request(void);
+		Request(std::string request);
+		~Request(void);
 
-	std::string getType(void) const;
-	void printInfoRequest(void) const;
-	void checkServer(std::vector<Server> server);
+		std::string getType(void) const;
+		void printInfoRequest(void);
+		void checkServer(std::vector<Server> server);
 
-   private:
-	void findType(std::string request);
-	void findPort(std::string hostname);
-	void analizeRequestLine(std::string requestLine);
-	void lookForLocation(std::string location);
-	void rightFormatLocation(void);
-	void checkInvalidCharacters(std::string to_check);
-	void checkOnLocation(void);
+	private:
+		void findType(std::string request);
+		void findPort(std::string hostname);
+		void analizeRequestLine(std::string requestLine);
+		void lookForLocation(std::string location);
+		void rightFormatLocation(void);
+		void checkInvalidCharacters(std::string to_check);
+		void checkOnLocation(void);
 
+		std::map<std::string, std::string> info;
 		Server				_rightServer;
 		std::string			_rightLocation;
 		std::string 		_hostname;

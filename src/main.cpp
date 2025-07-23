@@ -130,9 +130,12 @@ int main(int argc, char const *argv[])
 					close(fd);
 				}
 				Request request(buffer);
-				request.checkServer(servers);
-				request.printInfoRequest();
-				// if (buffer)
+				if (buffer)
+				{
+					request.checkServer(servers);
+					request.printInfoRequest();
+				}
+
 			}
 		}
 	}

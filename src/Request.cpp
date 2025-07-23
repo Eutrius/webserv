@@ -15,12 +15,12 @@ Request::Request(std::string request) : status(200)
 			throw std::runtime_error("Bad request: Host not found\n");
 		}
 		findPort(adress);
-		_connection = findInfo(request, "Connection:");
-		_accept = findInfo(request, "Accept:");
-		_bodyLength = findInfo(request, "Content-Length");
+		info["Connection"] = findInfo(request, "Connection:");
+		info["Accept"] = findInfo(request, "Accept:");
+		info["Content-Length"] = findInfo(request, "Content-Length");
 		_headerEnd = request.find("\r\n\r\n");
-		_body = request.substr(_headerEnd + 4);
-		if (std::atoi(_bodyLength.c_str()) != (int) _body.length())
+		info["body"] = request.substr(_headerEnd + 4);
+		if (std::atoi(info["Content-Length"].c_str()) != (int) info["body"].length())
 		{
 			status = 400;
 			throw std::runtime_error("Bad request: Invalid body Lenght\n");
@@ -53,19 +53,19 @@ void Request::findType(std::string request)
 	pos = request.find("GET");
 	if (pos >= 0)
 	{
-		_type = "GET";
+		info["method"] = "GET";
 		return;
 	}
 	pos = request.find("POST");
 	if (pos >= 0)
 	{
-		_type = "POST";
+		info["method"] = "POST";
 		return;
 	}
 	pos = request.find("DELETE");
 	if (pos >= 0)
 	{
-		_type = "DELETE";
+		info["method"] = "DELETE";
 		return;
 	}
 	status = 405;
@@ -79,18 +79,7 @@ void Request::findPort(std::string adress)
 
 	pos = adress.find(":");
 	if (pos == -1)
-	{
-		_hostname = adress;
-		_port.first = atoi_ip("localhost");
-		_port.second = 80;
-		return;
-	}
-	port.append(adress, pos + 1);
-	adress.erase(pos);
-	if (adress == "localhost")
-		adress = "127.0.0.1";
-	_port.first = atoi_ip(adress);
-	_port.second = std::atoi(port.c_str());
+		info["hostname"] = adress;
 }
 
 void Request::analizeRequestLine(std::string requestLine)
@@ -100,16 +89,16 @@ void Request::analizeRequestLine(std::string requestLine)
 
 	checkInvalidCharacters(requestLine);
 	this->findType(requestLine);
-	_location = findInfo(requestLine, _type);
+	info["URI"] = findInfo(requestLine, info["method"]);
 	rightFormatLocation();
-	protocol = findInfo(requestLine, _location);
-	if (protocol != "HTTP/1.1")
+	info["protocol"] = findInfo(requestLine, info["URI"]);
+	if (info["protocol"] != "HTTP/1.1")
 	{
 		status = 505;
 		throw std::runtime_error("Invalid HTTP Protocol\n");
 	}
-	check = findInfo(requestLine, protocol);
-	if (_location == "" || protocol == "" || check != "")
+	check = findInfo(requestLine, info["protocol"]);
+	if (info["URI"] == "" || info["protocol"] == "" || check != "")
 	{
 		status = 400;
 		throw std::runtime_error("Bad request: invalid request line\n");
@@ -120,16 +109,16 @@ void Request::rightFormatLocation(void)
 {
 	size_t pos;
 
-	if (_location[0] != '/')
+	if (info["URI"][0] != '/')
 	{
 		status = 400;
 		throw std::runtime_error("Bad request: no slash in URI\n");
 	}
-	pos = _location.find("%20");
+	pos = info["URI"].find("%20");
 	while (pos != std::string::npos)
 	{
-		_location.replace(pos, 3, " ");
-		pos = _location.find("%20");
+		info["URI"].replace(pos, 3, " ");
+		pos = info["URI"].find("%20");
 	}
 }
 
@@ -150,32 +139,15 @@ void Request::checkInvalidCharacters(std::string to_check)
 
 void Request::checkServer(std::vector<Server> server)
 {
-	int check = 0;
-
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it = server[i];
-		for (size_t x = 0; x < it.listen.size(); x++)
-		{
-			if (it.listen[x].second == _port.second &&
-			    (it.listen[x].first == _port.first || it.listen[x].first == 0 || _port.first == 0))
-			{
-				_rightServer = it;
-				check = 1;
-				if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
-					return;
-				else
-					break;
-			}
-		}
+		_rightServer = it;
+		if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
+				return;
 	}
-	if (check == 0)
-	{
-		status = 404;
-		throw std::runtime_error("Server not found\n");
-	}
-	else
-		lookForLocation(_location);
+	lookForLocation(info["URI"]);
+	checkOnLocation();
 }
 
 void Request::lookForLocation(std::string location)
@@ -186,7 +158,7 @@ void Request::lookForLocation(std::string location)
 	temp = ft_trim(location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
 	{
-		_rightLocation = temp;
+		info["location"] = temp;
 		return;
 	}
 	temp.erase(temp.length() - 1);
@@ -197,34 +169,31 @@ void Request::lookForLocation(std::string location)
 		throw std::runtime_error("Location not found\n");
 	}
 	else
-	{
 		lookForLocation(temp.substr(0, pos));
-		checkOnLocation();
-	}
 }
 
 void Request::checkOnLocation(void)
 {
 	int pos;
 
-	pos = _location.find(_rightLocation);
-	_location.replace(pos, _rightLocation.length() - 1, _rightServer.location[_rightLocation].root);
+	pos = info["URI"].find(info["location"]);
+	info["link"] = info["URI"];
+	info["link"].replace(pos, info["URI"].length() - 1, _rightServer.location[info["location"]].root);
 }
 
-void Request::printInfoRequest(void) const
+void Request::printInfoRequest(void)
 {
 	std::vector<Server> temp;
 
 	temp.push_back(_rightServer);
-	std::cout << "TYPE: " << this->_type << std::endl;
-	std::cout << "LOCATION: " << this->_location << std::endl;
-	std::cout << "HOSTNAME: " << this->_hostname << std::endl;
-	std::cout << "IP: " << this->_port.first << std::endl;
-	std::cout << "PORT: " << this->_port.second << std::endl;
-	std::cout << "CONNECTION: " << this->_connection << std::endl;
-	std::cout << "FILE ACCEPTED: " << this->_accept << std::endl;
-	std::cout << "BODY LENGTH: " << this->_bodyLength << std::endl;
-	std::cout << "LOCATION: " << _rightLocation << std::endl;
+	std::cout << "TYPE: " << this->info["method"] << std::endl;
+	std::cout << "URI: " << info["URI"] << std::endl;
+	std::cout << "LOCATION: " << info["location"] << std::endl;
+	std::cout << "link: " << info["link"] << std::endl;
+	std::cout << "HOSTNAME: " << info["hostname"] << std::endl;
+	std::cout << "CONNECTION: " << info["Connection"] << std::endl;
+	std::cout << "FILE ACCEPTED: " << info["Accept"] << std::endl;
+	std::cout << "BODY LENGTH: " << info["Content-Length"] << std::endl;
 	std::cout << "STATUS: " << status << std::endl << std::endl;
 	printServers(temp);
 }
