@@ -2,7 +2,7 @@
 
 Request::Request(std::string request) : status(200)
 {
-	std::string	adress;
+	std::string adress;
 	std::string requestLine = request.substr(0, request.find("\n"));
 	try
 	{
@@ -20,7 +20,7 @@ Request::Request(std::string request) : status(200)
 		_bodyLength = findInfo(request, "Content-Length");
 		_headerEnd = request.find("\r\n\r\n");
 		_body = request.substr(_headerEnd + 4);
-		if (std::atoi(_bodyLength.c_str()) != (int)_body.length())
+		if (std::atoi(_bodyLength.c_str()) != (int) _body.length())
 		{
 			status = 400;
 			throw std::runtime_error("Bad request: Invalid body Lenght\n");
@@ -31,21 +31,22 @@ Request::Request(std::string request) : status(200)
 			throw std::runtime_error("Bad request: no end of file\n");
 		}
 	}
-	catch (std::exception& error)
+	catch (std::exception &error)
 	{
 		std::cout << error.what() << std::endl;
 	}
 }
 
 Request::~Request(void)
-{}
+{
+}
 
-std::string	Request::getType(void) const
+std::string Request::getType(void) const
 {
 	return (this->_type);
 }
 
-void	Request::findType(std::string request)
+void Request::findType(std::string request)
 {
 	int pos;
 
@@ -53,27 +54,25 @@ void	Request::findType(std::string request)
 	if (pos == 0)
 	{
 		_type = "GET";
-		return ;
+		return;
 	}
 	pos = request.find("POST");
 	if (pos == 0)
 	{
 		_type = "POST";
-		return ;
+		return;
 	}
 	pos = request.find("DELETE");
 	if (pos == 0)
 	{
 		_type = "DELETE";
-		return ;
+		return;
 	}
 	status = 405;
 	throw std::runtime_error("Method not allowed\n");
 }
 
-
-
-void	Request::findPort(std::string adress)
+void Request::findPort(std::string adress)
 {
 	int pos;
 	std::string port;
@@ -84,20 +83,19 @@ void	Request::findPort(std::string adress)
 		_hostname = adress;
 		_port.first = atoi_ip("localhost");
 		_port.second = 80;
-		return ;
+		return;
 	}
 	port.append(adress, pos + 1);
 	adress.erase(pos);
 	if (adress == "localhost")
 		adress = "127.0.0.1";
-    _port.first = atoi_ip(adress);
+	_port.first = atoi_ip(adress);
 	_port.second = std::atoi(port.c_str());
-
 }
 
-void	Request::analizeRequestLine(std::string requestLine)
+void Request::analizeRequestLine(std::string requestLine)
 {
-	std::string	protocol;
+	std::string protocol;
 	std::string check;
 
 	this->findType(requestLine);
@@ -117,9 +115,9 @@ void	Request::analizeRequestLine(std::string requestLine)
 	}
 }
 
-void	Request::rightFormatLocation(void)
+void Request::rightFormatLocation(void)
 {
-	size_t	pos;
+	size_t pos;
 
 	if (_location[0] != '/')
 	{
@@ -134,14 +132,14 @@ void	Request::rightFormatLocation(void)
 	}
 }
 
-void	Request::checkInvalidCharacters(std::string to_check)
+void Request::checkInvalidCharacters(std::string to_check)
 {
 	for (size_t i = 0; i < to_check.length(); i++)
 	{
 		char c = to_check[i];
 		if (c == '\r' || c == '\n')
-			continue ;
-		else if (c <= 31 || c >= 127 || c == '>' || c == '<'  || c == '"')
+			continue;
+		else if (c <= 31 || c >= 127 || c == '>' || c == '<' || c == '"')
 		{
 			status = 400;
 			throw std::runtime_error("Bad request: invalid character found\n");
@@ -149,23 +147,24 @@ void	Request::checkInvalidCharacters(std::string to_check)
 	}
 }
 
-void	Request::checkServer(std::vector<Server> server)
+void Request::checkServer(std::vector<Server> server)
 {
-	int	check = 0;
+	int check = 0;
 
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
-		Server it=server[i];
+		Server it = server[i];
 		for (size_t x = 0; x < it.listen.size(); x++)
 		{
-			if (it.listen[x].second == _port.second && (it.listen[x].first == _port.first || it.listen[x].first == 0 || _port.first == 0))
+			if (it.listen[x].second == _port.second &&
+			    (it.listen[x].first == _port.first || it.listen[x].first == 0 || _port.first == 0))
 			{
 				_rightServer = it;
 				check = 1;
 				if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
-					return  ;
+					return;
 				else
-					break ;
+					break;
 			}
 		}
 	}
@@ -178,16 +177,16 @@ void	Request::checkServer(std::vector<Server> server)
 		lookForLocation(_location);
 }
 
-void	Request::lookForLocation(std::string location)
+void Request::lookForLocation(std::string location)
 {
 	std::string temp;
-	int			pos;
+	int pos;
 
 	temp = ft_trim(location);
 	if (_rightServer.location.find(temp) != _rightServer.location.end())
 	{
 		_rightLocation = temp;
-		return ;
+		return;
 	}
 	temp.erase(temp.length() - 1);
 	pos = temp.rfind("/");
@@ -203,8 +202,7 @@ void	Request::lookForLocation(std::string location)
 	}
 }
 
-
-void	Request::checkOnLocation(void)
+void Request::checkOnLocation(void)
 {
 	int pos;
 
@@ -212,7 +210,7 @@ void	Request::checkOnLocation(void)
 	_location.replace(pos, _rightLocation.length() - 1, _rightServer.location[_rightLocation].root);
 }
 
-void	Request::printInfoRequest(void) const
+void Request::printInfoRequest(void) const
 {
 	std::vector<Server> temp;
 
@@ -230,28 +228,28 @@ void	Request::printInfoRequest(void) const
 	printServers(temp);
 }
 
-bool	checkBody(std::string request)
+bool checkBody(std::string request)
 {
-	std::string	body;
-	int			headerEnd;
-	int			bodyLength;
+	std::string body;
+	int headerEnd;
+	int bodyLength;
 
 	headerEnd = request.find("\r\n\r\n");
 	if (headerEnd == -1)
-		return false;
+		return (false);
 	body = request.substr(headerEnd + 4);
 	bodyLength = std::atoi(findInfo(request, "Content-Length").c_str());
-	if ((int)body.length() < bodyLength)
-		return false;
-	return true;
+	if ((int) body.length() < bodyLength)
+		return (false);
+	return (true);
 }
 
-std::string	findInfo(std::string request, std::string toFind)
+std::string findInfo(std::string request, std::string toFind)
 {
-	int	end;
+	int end;
 	int begin;
 	int pos;
-	std::string	result;
+	std::string result;
 
 	pos = request.find(toFind);
 	if (pos == -1)

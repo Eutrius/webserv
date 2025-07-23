@@ -11,13 +11,13 @@ Epoll::Epoll(void)
 
 Epoll::~Epoll(void)
 {
-	close (epfd);
+	close(epfd);
 }
 
-int	Epoll::add_fd(int fd)
+int Epoll::add_fd(int fd)
 {
-	int					nr_fd;
-	struct epoll_event	ev;
+	int nr_fd;
+	struct epoll_event ev;
 
 	ev.events = EPOLLIN | EPOLLOUT;
 	ev.data.fd = fd;
@@ -29,7 +29,7 @@ int	Epoll::add_fd(int fd)
 	return (nr_fd);
 }
 
-int	Epoll::remove_fd(int fd)
+int Epoll::remove_fd(int fd)
 {
 	int nr_fd;
 
@@ -37,9 +37,9 @@ int	Epoll::remove_fd(int fd)
 	return (nr_fd);
 }
 
-int	Epoll::wait(void)
+int Epoll::wait(void)
 {
-	int	check;
+	int check;
 
 	check = epoll_wait(this->epfd, events, 1024, -1);
 	if (check == -1)
@@ -47,7 +47,7 @@ int	Epoll::wait(void)
 	return (check);
 }
 
-int	Epoll::getEpfd(void) const
+int Epoll::getEpfd(void) const
 {
 	return (this->epfd);
 }

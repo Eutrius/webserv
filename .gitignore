@@ -1,0 +1,6 @@
+.git
+.cache
+compile_commands.json
+webserv
+obj
+.vscode

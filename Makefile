@@ -1,20 +1,8 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: jyriarte <jyriarte@student.42.fr>          +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2025/04/29 16:42:22 by jyriarte          #+#    #+#              #
-#    Updated: 2025/07/09 15:06:34 by jyriarte         ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
-
 NAME = webserv
 TITLE = Web Server
 
 CC = g++
-CFLAGS = -Wall -Werror -Wextra -std=c++98
+CFLAGS = -Wall -Werror -Wextra -std=c++98 -g
 INCLUDE = -I include
 RM = rm -rf
 
@@ -23,10 +11,9 @@ SRC_DIR = src
 
 SRC = src/main.cpp \
 	  src/Epoll.cpp \
-	  src/main.cpp \
 	  src/Socket.cpp \
-	  src/Webserver.cpp \
 	  src/Request.cpp \
+	  src/Response.cpp \
 	  src/parser.cpp \
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
@@ -61,7 +48,7 @@ fclean:
 re: fclean all
 
 i:
-	@printf "$(IGN)\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
+	@printf "$(IGN)\n.git\n.cache\ncompile_commands.json\n$(NAME)\n$(OBJ_DIR)\n" > $(IGN)
 
 c:
 	@compiledb make --no-print-directory re
