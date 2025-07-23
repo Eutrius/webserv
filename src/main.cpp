@@ -118,6 +118,7 @@ int main(int argc, char const *argv[])
 			{
 				char buffer[BUFFER_SIZE];
 				int bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
+				std::cout << buffer << std::endl;
 				if (bytes_read > 0)
 				{
 					buffers[fd].append(buffer, bytes_read);
@@ -128,6 +129,9 @@ int main(int argc, char const *argv[])
 					buffers.erase(fd);
 					close(fd);
 				}
+				Request request(buffer);
+				request.checkServer(servers);
+				request.printInfoRequest();
 				// if (buffer)
 			}
 		}

@@ -4,9 +4,9 @@ Request::Request(std::string request) : status(200)
 {
 	std::string adress;
 	std::string requestLine = request.substr(0, request.find("\n"));
+
 	try
 	{
-		checkInvalidCharacters(request);
 		analizeRequestLine(requestLine);
 		adress = findInfo(request, "Host:");
 		if (adress == "")
@@ -51,19 +51,19 @@ void Request::findType(std::string request)
 	int pos;
 
 	pos = request.find("GET");
-	if (pos == 0)
+	if (pos >= 0)
 	{
 		_type = "GET";
 		return;
 	}
 	pos = request.find("POST");
-	if (pos == 0)
+	if (pos >= 0)
 	{
 		_type = "POST";
 		return;
 	}
 	pos = request.find("DELETE");
-	if (pos == 0)
+	if (pos >= 0)
 	{
 		_type = "DELETE";
 		return;
@@ -98,6 +98,7 @@ void Request::analizeRequestLine(std::string requestLine)
 	std::string protocol;
 	std::string check;
 
+	checkInvalidCharacters(requestLine);
 	this->findType(requestLine);
 	_location = findInfo(requestLine, _type);
 	rightFormatLocation();
