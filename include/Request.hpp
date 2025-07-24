@@ -14,7 +14,7 @@ class Request
 		Request(std::string request);
 		~Request(void);
 
-		std::string getType(void) const;
+		std::string getType(void);
 		void printInfoRequest(void);
 		void checkServer(std::vector<Server> server);
 
@@ -26,18 +26,10 @@ class Request
 		void rightFormatLocation(void);
 		void checkInvalidCharacters(std::string to_check);
 		void checkOnLocation(void);
+		void bodyLength(void);
 
 		std::map<std::string, std::string> info;
 		Server				_rightServer;
-		std::string			_rightLocation;
-		std::string 		_hostname;
-		std::string 		_type;
-		std::pair<int, int> _port;
-		std::string 		_location;
-		std::string			_connection;
-		std::string 		_accept;
-		std::string			_bodyLength;
-		std::string			_body;
 		int					_headerEnd;
 		int					status;
 };

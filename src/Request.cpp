@@ -20,16 +20,7 @@ Request::Request(std::string request) : status(200)
 		info["Content-Length"] = findInfo(request, "Content-Length");
 		_headerEnd = request.find("\r\n\r\n");
 		info["body"] = request.substr(_headerEnd + 4);
-		if (std::atoi(info["Content-Length"].c_str()) != (int) info["body"].length())
-		{
-			status = 400;
-			throw std::runtime_error("Bad request: Invalid body Lenght\n");
-		}
-		if (_headerEnd == -1)
-		{
-			status = 400;
-			throw std::runtime_error("Bad request: no end of file\n");
-		}
+		info["Content-Type"] = findInfo(request, "Content-Type");
 	}
 	catch (std::exception &error)
 	{
@@ -41,9 +32,9 @@ Request::~Request(void)
 {
 }
 
-std::string Request::getType(void) const
+std::string Request::getType(void)
 {
-	return (this->_type);
+	return (info["method"]);
 }
 
 void Request::findType(std::string request)
@@ -82,6 +73,20 @@ void Request::findPort(std::string adress)
 		info["hostname"] = adress;
 }
 
+void	Request::bodyLength(void)
+{
+	if (std::atoi(info["Content-Length"].c_str()) != (int) info["body"].length())
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: Invalid body Lenght\n");
+		}
+		if (_headerEnd == -1)
+		{
+			status = 400;
+			throw std::runtime_error("Bad request: no end of file\n");
+		}
+
+}
 void Request::analizeRequestLine(std::string requestLine)
 {
 	std::string protocol;
@@ -120,6 +125,14 @@ void Request::rightFormatLocation(void)
 		info["URI"].replace(pos, 3, " ");
 		pos = info["URI"].find("%20");
 	}
+	pos = info["URI"].find("?");
+	if (pos == std::string::npos)
+		info["query"] = "";
+	else
+	{
+		info["query"] = info["URI"].substr(pos);
+		info["URI"].erase(pos);
+	}
 }
 
 void Request::checkInvalidCharacters(std::string to_check)
@@ -143,7 +156,7 @@ void Request::checkServer(std::vector<Server> server)
 	{
 		Server it = server[i];
 		_rightServer = it;
-		if (std::find(it.server_name.begin(), it.server_name.end(), _hostname) != it.server_name.end())
+		if (std::find(it.server_name.begin(), it.server_name.end(), info["hostname"]) != it.server_name.end())
 				return;
 	}
 	lookForLocation(info["URI"]);
@@ -178,7 +191,23 @@ void Request::checkOnLocation(void)
 
 	pos = info["URI"].find(info["location"]);
 	info["link"] = info["URI"];
-	info["link"].replace(pos, info["URI"].length() - 1, _rightServer.location[info["location"]].root);
+	info["link"].insert(pos, _rightServer.location[info["location"]].root);
+	pos = info["link"].find(info["location"]);
+	info["link"].replace(pos + 1, info["location"].length(), "");
+	if (std::atoi(info["Content-Length"].c_str()) > (int)_rightServer.client_max_body_size)
+	{
+		status = 400;
+		throw std::runtime_error("Content length exceeds client max body size\n");
+	}
+	if ((!(_rightServer.location[info["location"]].methods & 1) && this->getType() == "GET") ||
+	(!(_rightServer.location[info["location"]].methods & 2) && this->getType() == "POST") ||
+	(!(_rightServer.location[info["location"]].methods & 4) && this->getType() == "DELETE"))
+	{
+		status = 405;
+		throw std::runtime_error("Method not Allowed\n");
+	}
+
+
 }
 
 void Request::printInfoRequest(void)
@@ -194,6 +223,8 @@ void Request::printInfoRequest(void)
 	std::cout << "CONNECTION: " << info["Connection"] << std::endl;
 	std::cout << "FILE ACCEPTED: " << info["Accept"] << std::endl;
 	std::cout << "BODY LENGTH: " << info["Content-Length"] << std::endl;
+	std::cout << "CONTENT TYPE: " << info["Content-Type"] << std::endl;
+	std::cout << "QUERY: " << info["query"] << std::endl;
 	std::cout << "STATUS: " << status << std::endl << std::endl;
 	printServers(temp);
 }

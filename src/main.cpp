@@ -132,8 +132,16 @@ int main(int argc, char const *argv[])
 				Request request(buffer);
 				if (buffer)
 				{
-					request.checkServer(servers);
-					request.printInfoRequest();
+					try
+					{
+						request.checkServer(servers);
+						request.printInfoRequest();
+					}
+					catch(const std::exception& e)
+					{
+						std::cerr << e.what() << '\n';
+					}
+
 				}
 
 			}
