@@ -1,9 +1,13 @@
 #pragma once
 
+<<<<<<< Updated upstream
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+=======
+#include <iostream>
+>>>>>>> Stashed changes
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>

@@ -9,7 +9,7 @@ RM = rm -rf
 OBJ_DIR = obj
 SRC_DIR = src
 
-SRC = src/main.cpp \
+SRC = src/main2.cpp \
 	  src/Epoll.cpp \
 	  src/Socket.cpp \
 	  src/Request.cpp \

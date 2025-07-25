@@ -56,7 +56,21 @@ int Socket::getFd(void) const
 	return (_fd);
 }
 
+<<<<<<< Updated upstream
 int Socket::accept(void)
+=======
+int Socket::accept()
+{
+    if (::accept(_fd, (struct sockaddr *)&_address, (socklen_t*)&_addressLen))
+    {
+        std::cout << errno;
+        exit(1);
+        return -1;
+    }
+    return 0;
+}
+static int atoi_ip(const std::string &host)
+>>>>>>> Stashed changes
 {
 	struct sockaddr_in clientAdress;
 	int clientAdressLen = sizeof(clientAdress);
