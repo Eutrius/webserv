@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Page</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(18, 30px);
+            grid-template-rows: repeat(7, 30px);
+            gap: 0px;
+            margin: 30px auto;
+            padding: 30px;
+            background-color: #ffffff;
+            justify-self: center;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: #ffffff;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .cell.highlight {
+            background-color: #0000ff;
+            box-shadow: 0 0 15px rgba(0, 0, 255, 0.7);
+            transform: scale(1.1);
+        }
+
+        h1 {
+            color: #888888;
+            margin-bottom: 10px;
+            opacity: 0;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(136, 136, 136, 0.8), 
+                         0 0 30px rgba(136, 136, 136, 0.6),
+                         0 0 40px rgba(136, 136, 136, 0.4);
+            transition: opacity 1s ease;
+        }
+
+        h1.visible {
+            opacity: 1;
+        }
+
+        .info {
+            color: #888888;
+            margin-top: 20px;
+            font-size: 32px;
+            opacity: 0;
+            font-weight: 600;
+            text-shadow: 0 0 15px rgba(136, 136, 136, 0.8), 
+                         0 0 25px rgba(136, 136, 136, 0.6),
+                         0 0 35px rgba(136, 136, 136, 0.4);
+            transition: opacity 1s ease;
+        }
+
+        .info.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="grid" id="grid"></div>
+        <h1>Method Not Allowed</h1>
+        <div class="info">Client Error</div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const rows = 7;
+        const cols = 18;
+
+        for (let row = 1; row <= rows; row++) {
+            for (let col = 1; col <= cols; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+                grid.appendChild(cell);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const h1 = document.querySelector('h1');
+            const info = document.querySelector('.info');
+            
+            setTimeout(() => {
+                h1.classList.add('visible');
+            }, 50);
+            
+            setTimeout(() => {
+                info.classList.add('visible');
+            }, 300);
+        });
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+
+            while (currentIndex > 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+        }
+
+        cellsToHighlight =  [[3, 4], [3, 6], [3, 9], [3, 10], [3, 11], [3, 13], [3, 14], [3, 15], [4, 4], [4, 6], [4, 9], [4, 11], [4, 13], [5, 4], [5, 5], [5, 6], [5, 7], [5, 9], [5, 11], [5, 13], [5, 14],  [5, 15], [6, 6], [6, 9], [6, 11], [6, 15], [7, 6], [7, 9], [7, 10], [7, 11], [7,13], [7,14], [7, 15]];
+		shuffle(cellsToHighlight);
+        setTimeout(() => {
+			for (let i = 0; i < cellsToHighlight.length; i++) {
+				setTimeout(() => {
+					const [row, col] = cellsToHighlight[i];
+					const targetCell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+					if (targetCell) {
+						targetCell.classList.add('highlight');
+					}
+				}, i * 45);
+			}
+		}, 375);
+
+
+        grid.addEventListener('click', (e) => {
+            if (e.target.classList.contains('cell')) {
+                e.target.classList.toggle('highlight');
+                const row = e.target.dataset.row;
+                const col = e.target.dataset.col;
+                console.log(`Cella cliccata: (${col}, ${row})`);
+            }
+        });
+    </script>
+</body>
+</html>

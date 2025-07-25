@@ -11,6 +11,7 @@
 #include "Request.hpp"
 #include "Socket.hpp"
 #include "map"
+#include "parser.hpp"
 
 #define BUFFER_SIZE 8192
 
@@ -118,6 +119,7 @@ int main(int argc, char const *argv[])
 			{
 				char buffer[BUFFER_SIZE];
 				int bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
+				std::cout << buffer << std::endl;
 				if (bytes_read > 0)
 				{
 					buffers[fd].append(buffer, bytes_read);
@@ -128,7 +130,21 @@ int main(int argc, char const *argv[])
 					buffers.erase(fd);
 					close(fd);
 				}
-				// if (buffer)
+				Request request(buffer);
+				if (buffer)
+				{
+					try
+					{
+						request.checkServer(servers);
+						request.printInfoRequest();
+					}
+					catch(const std::exception& e)
+					{
+						std::cerr << e.what() << '\n';
+					}
+
+				}
+
 			}
 		}
 	}

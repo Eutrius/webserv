@@ -6,41 +6,59 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "parser.hpp"
+
+struct	serverinfo
+{
+	Server			_rightServer;
+	std::string		location;
+	std::string		link;
+	std::string		to_client;
+};
+
+struct	requestinfo
+{
+	std::string		URI;
+	std::string		query;
+	std::string		protocol;
+	std::string		hostname;
+	std::string		contentType;
+	std::string		contentLength;
+	std::string		connection;
+	std::string		formatAccepted;
+	std::string		body;
+	int				method;
+	int				_headerEnd;
+	int				status;
+};
 
 class Request
 {
    public:
-	Request(std::string request);
-	~Request(void);
+		Request(std::string request);
+		~Request(void);
 
-	std::string getType(void) const;
-	void printInfoRequest(void) const;
-	void checkServer(std::vector<Server> server);
+		int getType(void) const;
+		void printInfoRequest(void);
+		void checkServer(std::vector<Server> server);
 
-   private:
-	void findType(std::string request);
-	void findPort(std::string hostname);
-	void analizeRequestLine(std::string requestLine);
-	void lookForLocation(std::string location);
-	void rightFormatLocation(void);
-	void checkInvalidCharacters(std::string to_check);
-	void checkOnLocation(void);
+	private:
+		std::string findType(std::string request);
+		void 		findPort(std::string hostname);
+		void 		analizeRequestLine(std::string requestLine);
+		void 		lookForLocation(std::string location);
+		void 		rightFormatLocation(void);
+		void 		checkInvalidCharacters(std::string to_check);
+		void 		checkOnLocation(void);
+		void		bodyLength(void);
 
-	Server _rightServer;
-	std::string _rightLocation;
-	std::string _rightDir;
-	std::string _hostname;
-	std::string _type;
-	std::pair<int, int> _port;
-	std::string _location;
-	std::string _connection;
-	std::string _accept;
-	std::string _bodyLength;
-	std::string _body;
-	int _headerEnd;
-	int status;
+		requestinfo requestInfo;
+		serverinfo	serverInfo;
 };
+
+
 
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);
