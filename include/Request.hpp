@@ -1,6 +1,5 @@
 #pragma once
 
-<<<<<<< Updated upstream
 #include <string.h>
 #include <cctype>
 #include <iostream>
@@ -63,5 +62,3 @@ class Request
 
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);
-=======
->>>>>>> Stashed changes

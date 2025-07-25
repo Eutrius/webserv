@@ -31,8 +31,7 @@ std::string ft_trim(const std::string &s)
 		--end;
 
 	std::string result = s.substr(start, end - start);
-	// if (result[result.size() - 1] != '/')
-	// 	result += '/';
+	//  lo
 	return (result);
 }
 
