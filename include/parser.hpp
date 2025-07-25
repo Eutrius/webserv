@@ -18,7 +18,7 @@ struct Location
 	std::vector<std::string> cgi_extension;
 	std::string root;
 	std::vector<std::string> index;
-	size_t client_max_body_size;
+	int client_max_body_size;
 	std::map<int, std::string> error_page;
 };
 
@@ -32,7 +32,7 @@ struct Server
 	bool autoindex;
 	std::vector<std::string> cgi_extension;
 	int methods;
-	size_t client_max_body_size;
+	int client_max_body_size;
 	std::map<int, std::string> error_page;  // must be between 300 and 599
 	std::map<std::string, Location> location;
 };

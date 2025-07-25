@@ -31,8 +31,8 @@ std::string ft_trim(const std::string &s)
 		--end;
 
 	std::string result = s.substr(start, end - start);
-	if (result[result.size() - 1] != '/')
-		result += '/';
+	// if (result[result.size() - 1] != '/')
+	// 	result += '/';
 	return (result);
 }
 
@@ -185,7 +185,7 @@ void printServers(const std::vector<Server> &servers)
 		if (s.location.size())
 			std::cout << "locations:\n";
 		else
-			std::cout << "no locations.\n";
+			std::cout << "no locations\n";
 		for (std::map<std::string, Location>::const_iterator lit = s.location.begin(); lit != s.location.end(); ++lit)
 		{
 			const std::string &path = lit->first;
@@ -260,7 +260,7 @@ void checkIndex(std::vector<std::string> vect, std::vector<std::string> &index)
 	index = vect;
 }
 
-void checkClient_max_body_size(std::vector<std::string> vect, size_t &client_max_body_size)
+void checkClient_max_body_size(std::vector<std::string> vect, int &client_max_body_size)
 {
 	if (vect.size() != 1)
 		throw std::runtime_error("\"client_max_body_size\" directive must have 1 argument");
@@ -442,10 +442,10 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 
 void removeLocationInPlace(std::string &input)
 {
-	size_t pos = 0;
+	size_t pos = input.find("location ", 0);
 	size_t start_pos, end_pos;
 
-	while (input.find("location ", pos) != std::string::npos)
+	while (input.find("location ", pos) != std::string::npos && (input.find("location ", pos) < input.find("}", pos) || input.find("}", pos) < input.find(";", pos)))
 	{
 		start_pos = input.find("location ", pos);  // to do: assicurarsi che prima ci sia " ;}"
 		end_pos = input.find_first_not_of(' ', start_pos);
@@ -658,7 +658,7 @@ void parse(std::string file, std::vector<Server> &main_vector)
 		file = file.substr(i + 1);
 	}
 	checkServerNames(main_vector);
-	printServers(main_vector);
+	//printServers(main_vector);
 }
 
 void readFileAsString(std::ifstream &file, std::vector<Server> &main_vector)

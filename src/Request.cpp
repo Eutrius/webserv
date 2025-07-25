@@ -1,8 +1,9 @@
 #include "Request.hpp"
 
-Request::Request(std::string request) : status(200)
+Request::Request(std::string request)
 {
 	std::string adress;
+	requestInfo.status = 200;
 	std::string requestLine = request.substr(0, request.find("\n"));
 
 	try
@@ -11,16 +12,16 @@ Request::Request(std::string request) : status(200)
 		adress = findInfo(request, "Host:");
 		if (adress == "")
 		{
-			status = 400;
+			requestInfo.status = 400;
 			throw std::runtime_error("Bad request: Host not found\n");
 		}
 		findPort(adress);
-		info["Connection"] = findInfo(request, "Connection:");
-		info["Accept"] = findInfo(request, "Accept:");
-		info["Content-Length"] = findInfo(request, "Content-Length");
-		_headerEnd = request.find("\r\n\r\n");
-		info["body"] = request.substr(_headerEnd + 4);
-		info["Content-Type"] = findInfo(request, "Content-Type");
+		requestInfo.connection = findInfo(request, "Connection:");
+		requestInfo.formatAccepted = findInfo(request, "Accept:");
+		requestInfo.contentLength = findInfo(request, "Content-Length");
+		requestInfo._headerEnd = request.find("\r\n\r\n");
+		requestInfo.body = request.substr(requestInfo._headerEnd + 4);
+		requestInfo.contentType = findInfo(request, "Content-Type");
 	}
 	catch (std::exception &error)
 	{
@@ -32,34 +33,34 @@ Request::~Request(void)
 {
 }
 
-std::string Request::getType(void)
+int Request::getType(void) const
 {
-	return (info["method"]);
+	return (requestInfo.method);
 }
 
-void Request::findType(std::string request)
+std::string Request::findType(std::string request)
 {
 	int pos;
 
 	pos = request.find("GET");
 	if (pos >= 0)
 	{
-		info["method"] = "GET";
-		return;
+		requestInfo.method = 1;
+		return ("GET");
 	}
 	pos = request.find("POST");
 	if (pos >= 0)
 	{
-		info["method"] = "POST";
-		return;
+		requestInfo.method = 2;
+		return ("POST");
 	}
 	pos = request.find("DELETE");
 	if (pos >= 0)
 	{
-		info["method"] = "DELETE";
-		return;
+		requestInfo.method = 4;
+		return ("DELETE");
 	}
-	status = 405;
+	requestInfo.status = 405;
 	throw std::runtime_error("Method not allowed\n");
 }
 
@@ -70,19 +71,19 @@ void Request::findPort(std::string adress)
 
 	pos = adress.find(":");
 	if (pos == -1)
-		info["hostname"] = adress;
+		requestInfo.hostname = adress;
 }
 
 void	Request::bodyLength(void)
 {
-	if (std::atoi(info["Content-Length"].c_str()) != (int) info["body"].length())
+	if (std::atoi(requestInfo.contentLength.c_str()) != (int)requestInfo.body.length())
 		{
-			status = 400;
+			requestInfo.status = 400;
 			throw std::runtime_error("Bad request: Invalid body Lenght\n");
 		}
-		if (_headerEnd == -1)
+		if (requestInfo._headerEnd == -1)
 		{
-			status = 400;
+			requestInfo.status = 400;
 			throw std::runtime_error("Bad request: no end of file\n");
 		}
 
@@ -93,19 +94,19 @@ void Request::analizeRequestLine(std::string requestLine)
 	std::string check;
 
 	checkInvalidCharacters(requestLine);
-	this->findType(requestLine);
-	info["URI"] = findInfo(requestLine, info["method"]);
+	check = this->findType(requestLine);
+	requestInfo.URI = findInfo(requestLine, check);
 	rightFormatLocation();
-	info["protocol"] = findInfo(requestLine, info["URI"]);
-	if (info["protocol"] != "HTTP/1.1")
+	requestInfo.protocol = findInfo(requestLine, requestInfo.URI);
+	if (requestInfo.protocol != "HTTP/1.1")
 	{
-		status = 505;
+		requestInfo.status = 505;
 		throw std::runtime_error("Invalid HTTP Protocol\n");
 	}
-	check = findInfo(requestLine, info["protocol"]);
-	if (info["URI"] == "" || info["protocol"] == "" || check != "")
+	check = findInfo(requestLine, requestInfo.protocol);
+	if (requestInfo.URI == "" || requestInfo.protocol == "" || check != "")
 	{
-		status = 400;
+		requestInfo.status = 400;
 		throw std::runtime_error("Bad request: invalid request line\n");
 	}
 }
@@ -114,24 +115,24 @@ void Request::rightFormatLocation(void)
 {
 	size_t pos;
 
-	if (info["URI"][0] != '/')
+	if (requestInfo.URI[0] != '/')
 	{
-		status = 400;
+		requestInfo.status = 400;
 		throw std::runtime_error("Bad request: no slash in URI\n");
 	}
-	pos = info["URI"].find("%20");
+	pos = requestInfo.URI.find("%20");
 	while (pos != std::string::npos)
 	{
-		info["URI"].replace(pos, 3, " ");
-		pos = info["URI"].find("%20");
+		requestInfo.URI.replace(pos, 3, " ");
+		pos = requestInfo.URI.find("%20");
 	}
-	pos = info["URI"].find("?");
+	pos = requestInfo.URI.find("?");
 	if (pos == std::string::npos)
-		info["query"] = "";
+		requestInfo.query = "";
 	else
 	{
-		info["query"] = info["URI"].substr(pos);
-		info["URI"].erase(pos);
+		requestInfo.query = requestInfo.URI.substr(pos);
+		requestInfo.URI.erase(pos);
 	}
 }
 
@@ -144,7 +145,7 @@ void Request::checkInvalidCharacters(std::string to_check)
 			continue;
 		else if (c <= 31 || c >= 127 || c == '>' || c == '<' || c == '"')
 		{
-			status = 400;
+			requestInfo.status = 400;
 			throw std::runtime_error("Bad request: invalid character found\n");
 		}
 	}
@@ -155,78 +156,81 @@ void Request::checkServer(std::vector<Server> server)
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it = server[i];
-		_rightServer = it;
-		if (std::find(it.server_name.begin(), it.server_name.end(), info["hostname"]) != it.server_name.end())
+		serverInfo._rightServer = it;
+		if (std::find(it.server_name.begin(), it.server_name.end(), requestInfo.hostname) != it.server_name.end())
 				return;
 	}
-	lookForLocation(info["URI"]);
+	lookForLocation(requestInfo.URI);
 	checkOnLocation();
 }
 
 void Request::lookForLocation(std::string location)
 {
 	std::string temp;
-	int pos;
+	temp = location;
+	std::map<std::string, Location>::iterator it;
 
-	temp = ft_trim(location);
-	if (_rightServer.location.find(temp) != _rightServer.location.end())
+	for (it = serverInfo._rightServer.location.begin(); it != serverInfo._rightServer.location.end(); it++)
 	{
-		info["location"] = temp;
-		return;
+		std::cout << it->first << std::endl;
+		if (location.find(it->first) != std::string::npos && it->first.length() > serverInfo.location.length())
+			serverInfo.location = it->first;
 	}
-	temp.erase(temp.length() - 1);
-	pos = temp.rfind("/");
-	if (pos == -1)
-	{
-		status = 404;
-		throw std::runtime_error("Location not found\n");
-	}
-	else
-		lookForLocation(temp.substr(0, pos));
 }
 
 void Request::checkOnLocation(void)
 {
 	int pos;
+	// struct stat data;
 
-	pos = info["URI"].find(info["location"]);
-	info["link"] = info["URI"];
-	info["link"].insert(pos, _rightServer.location[info["location"]].root);
-	pos = info["link"].find(info["location"]);
-	info["link"].replace(pos + 1, info["location"].length(), "");
-	if (std::atoi(info["Content-Length"].c_str()) > (int)_rightServer.client_max_body_size)
+	if (serverInfo._rightServer.location[serverInfo.location].return_path.second != "")
 	{
-		status = 400;
+		requestInfo.status = 301;
+		serverInfo.to_client =serverInfo._rightServer.location[serverInfo.location].return_path.second;
+		return ;
+	}
+	pos = requestInfo.URI.find(serverInfo.location);
+	serverInfo.link = requestInfo.URI;
+	serverInfo.link.insert(pos, serverInfo._rightServer.location[serverInfo.location].root);
+	pos = serverInfo.link.find(serverInfo.location);
+	//serverInfo.link.replace(pos, serverInfo.location.length(), "");
+	if (std::atoi(requestInfo.contentLength.c_str()) > serverInfo._rightServer.client_max_body_size)
+	{
+		requestInfo.status = 400;
 		throw std::runtime_error("Content length exceeds client max body size\n");
 	}
-	if ((!(_rightServer.location[info["location"]].methods & 1) && this->getType() == "GET") ||
-	(!(_rightServer.location[info["location"]].methods & 2) && this->getType() == "POST") ||
-	(!(_rightServer.location[info["location"]].methods & 4) && this->getType() == "DELETE"))
+	if (!(serverInfo._rightServer.location[serverInfo.location].methods & requestInfo.method))
 	{
-		status = 405;
+		requestInfo.status = 405;
 		throw std::runtime_error("Method not Allowed\n");
 	}
-
-
+	// stat(info["link"].c_str(), &data);
+	// if (data.st_mode & S_IFREG)
+	// {
+	// 	info["file"] = info["link"].substr(info["link"].rfind("\\"));
+	// 	info["link"].erase(info["link"].rfind("\\"));
+	// }
+	// if (data->st_mode & S_IFDIR  && (data->st_mode))
 }
 
 void Request::printInfoRequest(void)
 {
 	std::vector<Server> temp;
 
-	temp.push_back(_rightServer);
-	std::cout << "TYPE: " << this->info["method"] << std::endl;
-	std::cout << "URI: " << info["URI"] << std::endl;
-	std::cout << "LOCATION: " << info["location"] << std::endl;
-	std::cout << "link: " << info["link"] << std::endl;
-	std::cout << "HOSTNAME: " << info["hostname"] << std::endl;
-	std::cout << "CONNECTION: " << info["Connection"] << std::endl;
-	std::cout << "FILE ACCEPTED: " << info["Accept"] << std::endl;
-	std::cout << "BODY LENGTH: " << info["Content-Length"] << std::endl;
-	std::cout << "CONTENT TYPE: " << info["Content-Type"] << std::endl;
-	std::cout << "QUERY: " << info["query"] << std::endl;
-	std::cout << "STATUS: " << status << std::endl << std::endl;
-	printServers(temp);
+	temp.push_back(serverInfo._rightServer);
+	std::cout << "TYPE: " << requestInfo.method << std::endl;
+	std::cout << "URI: " << requestInfo.URI << std::endl;
+	std::cout << "LOCATION: " << serverInfo.location << std::endl;
+	std::cout << "link: " << serverInfo.link << std::endl;
+	std::cout << "HOSTNAME: " << requestInfo.hostname << std::endl;
+	std::cout << "CONNECTION: " << requestInfo.connection << std::endl;
+	std::cout << "FILE ACCEPTED: " << requestInfo.formatAccepted << std::endl;
+	std::cout << "BODY LENGTH: " << requestInfo.contentLength << std::endl;
+	std::cout << "CONTENT TYPE: " << requestInfo.contentType << std::endl;
+	std::cout << "QUERY: " << requestInfo.query << std::endl;
+	std::cout << "FILE TO CLIENT: " << serverInfo.to_client << std::endl;
+	std::cout << "STATUS: " << requestInfo.status << std::endl << std::endl;
+	//printServers(temp);
 }
 
 bool checkBody(std::string request)
