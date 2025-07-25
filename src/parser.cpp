@@ -47,14 +47,10 @@ std::string ft_replace(const std::string &originale, const std::string &daSostit
 	while ((foundPos = originale.find(daSostituire, pos)) != std::string::npos)
 	{
 		risultato.append(originale, pos, foundPos - pos);
-
 		risultato += daInserire;
-
 		pos = foundPos + len;
 	}
-
 	risultato.append(originale, pos, originale.length() - pos);
-
 	return (risultato);
 }
 
@@ -126,6 +122,8 @@ void parseListen(std::string &input, std::pair<int, int> &tup)
 
 void checkServerNames(std::vector<Server> &servers)
 {
+	if (!servers.size())
+		throw std::runtime_error("The program requires at least 1 server.");
 	for (size_t i = 1; i < servers.size(); ++i)
 	{
 		Server &s = servers[i];
@@ -183,7 +181,7 @@ void printServers(const std::vector<Server> &servers)
 			std::cout << "  [" << it->first << "] => " << it->second << "\n";
 
 		if (s.location.size())
-			std::cout << "locations:\n";
+			std::cout << "Locations:\n";
 		else
 			std::cout << "no locations\n";
 		for (std::map<std::string, Location>::const_iterator lit = s.location.begin(); lit != s.location.end(); ++lit)
@@ -219,14 +217,13 @@ void printServers(const std::vector<Server> &servers)
 	}
 }
 
+
 // -------------------------
 //		  CHECKERS
 // -------------------------
 
 void checkListen(std::vector<std::string> vect, std::vector<std::pair<int, int> > &listen)
 {
-	if (vect.size() == 0)
-		throw std::runtime_error("invalid number of arguments in \"listen\" directive");
 	std::vector<std::pair<int, int> > res;
 	for (size_t i = 0; i < vect.size(); ++i)
 	{
@@ -239,15 +236,11 @@ void checkListen(std::vector<std::string> vect, std::vector<std::pair<int, int> 
 
 void checkServer_name(std::vector<std::string> vect, std::vector<std::string> &server_name)
 {
-	if (vect.size() < 1)
-		throw std::runtime_error("invalid number of arguments in \"server_name\" directive");
 	server_name = vect;
 }
 
 void checkRoot(std::vector<std::string> vect, std::string &root)
 {
-	if (vect.size() == 0)
-		throw std::runtime_error("invalid number of arguments in \"root\" directive");
 	if (vect.size() > 1)
 		throw std::runtime_error("\"root\" directive is duplicate");
 	root = vect[0];
@@ -255,8 +248,6 @@ void checkRoot(std::vector<std::string> vect, std::string &root)
 
 void checkIndex(std::vector<std::string> vect, std::vector<std::string> &index)
 {
-	if (vect.size() < 1)
-		throw std::runtime_error("invalid number of arguments in \"index\" directive");
 	index = vect;
 }
 
@@ -270,8 +261,6 @@ void checkClient_max_body_size(std::vector<std::string> vect, int &client_max_bo
 void checkMethods(std::vector<std::string> vect, int &methods)
 {
 	methods = 0;
-	if (vect.size() < 1)
-		throw std::runtime_error("invalid number of arguments in \"methods\" directive");
 	for (size_t i = 0; i < vect.size(); ++i)
 	{
 		if (vect[i] != "GET" && vect[i] != "POST" && vect[i] != "DELETE")
@@ -287,8 +276,6 @@ void checkMethods(std::vector<std::string> vect, int &methods)
 
 void checkAutoindex(std::vector<std::string> vect, bool &autoindex)
 {
-	if (vect.size() == 0)
-		throw std::runtime_error("invalid number of arguments in \"autoindex\" directive");
 	if (vect.size() > 1)
 		throw std::runtime_error("\"autoindex\" directive is duplicate");
 	if (vect[0] == "on")
@@ -309,8 +296,6 @@ void checkUpload_dir(std::vector<std::string> vect, std::string &upload_dir)
 
 void checkCgi_extension(std::vector<std::string> vect, std::vector<std::string> &cgi_extension)
 {
-	if (vect.size() == 0)
-		throw std::runtime_error("invalid number of arguments in \"cgi_extension\" directive");
 	for (size_t i = 0; i < vect.size(); ++i)
 	{
 		if (vect[i] != "py" && vect[i] != "php")
@@ -387,8 +372,12 @@ void validatelocation(locationmap &m, Server &serverx)
 					throw std::runtime_error("error: \"return\" takes one or two arguments");
 				checkReturn(jt->second, serverx.location[it->first].return_path, stringToInt(jt->second[0]));
 			}
+			else if (jt->first == "server_name")
+				throw std::runtime_error("server_name cannot be overridden inside a location block");
+			else if (jt->first == "listen")
+				throw std::runtime_error("ip:port cannot be overridden inside a location block");
 			else
-				throw std::runtime_error("Unknown directive: " + jt->first);
+				throw std::runtime_error("Is not a valid error_page number: " + it->first);
 		}
 	}
 }
@@ -431,10 +420,12 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 			checkUpload_dir(it->second, serverx.upload_dir);
 		else if (it->first == "cgi_extension")
 			checkCgi_extension(it->second, serverx.cgi_extension);
+		else if (it->first == "return")
+			throw std::runtime_error("Return should be inside a location");
 		else if (it->first.length() == 3 && isdigit(it->first[0]) && isdigit(it->first[1]) && isdigit(it->first[2]))
 			checkError_page(it->second, serverx.error_page, stringToInt(it->first));
 		else
-			throw std::runtime_error("Unknown directive: " + it->first);
+			throw std::runtime_error("Is not a valid error_page number: " + it->first);
 	}
 	if (serverx.upload_dir == "")
 		throw std::runtime_error("Every server needs an upload directory");
@@ -461,40 +452,19 @@ void removeLocationInPlace(std::string &input)
 
 std::string removeComments(const std::string &input)
 {
-	std::istringstream iss(input);
-	std::ostringstream oss;
-	std::string linea;
+    std::istringstream iss(input);
+    std::ostringstream oss;
+    std::string line;
 
-	while (std::getline(iss, linea))
+    while (std::getline(iss, line))
 	{
-		size_t pos = std::string::npos;
-		for (size_t i = 0; i < linea.size(); ++i)
-		{
-			if (linea[i] == '#')
-			{
-				if (i == 0 || linea[i - 1] == ' ' || linea[i - 1] == '\t')
-				{
-					pos = i;
-					break;
-				}
-			}
-		}
-		if (pos != std::string::npos)
-		{
-			linea.erase(pos);
-		}
-
-		size_t endpos = linea.find_last_not_of(" \t");
-		if (endpos != std::string::npos)
-			linea.erase(endpos + 1);
-		else
-			linea.clear();
-
-		if (!linea.empty())
-			oss << linea << ' ';
-	}
-
-	return (oss.str());
+        size_t pos = line.find('#');
+        if (pos != std::string::npos)
+            line.erase(pos);
+        if (!line.empty())
+            oss << line << ' ';
+    }
+    return oss.str();
 }
 
 void splitStringToMap(const std::string &input, std::map<std::string, std::vector<std::string> > &result)
@@ -538,6 +508,10 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 
 	std::vector<std::string> newValues;
 
+	static const std::string permittedDirectives[] = {"listen", "server_name", "root", "index", "client_max_body_size", "methods", "autoindex", "upload_dir", "cgi_extension", "error_page", "return"};
+	static const std::vector<std::string> permittedList(permittedDirectives, permittedDirectives + 11);
+	if (std::find(permittedList.begin(), permittedList.end(), tokens[0]) == permittedList.end())
+		throw std::runtime_error("Unknown directive: " + tokens[0]);
 	if (tokens[0] == "error_page")
 	{
 		if (tokens.size() < 3)
@@ -553,12 +527,13 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 		return;
 	}
 
-	if (tokens[0] == "return" && result.size())
-		throw std::runtime_error("error: \"return\" should be the only directive");
-
 	std::string key = tokens[0];
 	for (size_t i = 1; i < tokens.size(); ++i)
 		newValues.push_back(tokens[i]);
+	if (!newValues.size())
+		throw std::runtime_error(key + " directive requires an argument");
+	if (tokens[0] == "return" && result.size())
+		throw std::runtime_error("error: \"return\" should be the only directive");
 
 	// Se la chiave esiste già
 	if (result.find(key) != result.end())
@@ -571,64 +546,60 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 		result[key] = newValues;  // Se la chiave non esiste
 }
 
+
 void parseinserver(std::string &file, Server &serverx)
 {
 	size_t i;
-	std::string file_copia;
 
-	file_copia = file;
-
+	std::map<std::string, std::vector<std::string> > mappa;
 	locationmap mappa_location;
 	const size_t npos = std::string::npos;
-	while (file_copia.find("location ") != npos && file_copia.find("location ") < file_copia.find("}"))
+	while (file.find_first_not_of(' ') != std::string::npos && file[file.find_first_not_of(' ')] != '}')
 	{
-		std::map<std::string, std::vector<std::string> > mappa2;
-		size_t pos1 = file_copia.find("location ");
-		size_t pos2;
-
-		std::vector<size_t> candidates;
-
-		file_copia = file_copia.substr(pos1 + 8);
-		pos1 = file_copia.find_first_not_of(" ");
-		pos2 = file_copia.find("{");
-		if (file_copia.substr(0, pos2).find(";") != npos)
-			continue;
-		if (pos2 == npos || pos1 == pos2)
-			throw std::runtime_error("location section need an argument and \"{\"");
-		std::string key = ft_trim(file_copia.substr(pos1, pos2 - 1));
-		file_copia = file_copia.substr(pos2 + 1);
-		pos1 = file_copia.find(";");
-		pos2 = file_copia.find("}");
-		if (pos1 == npos || pos2 == npos || pos2 < pos1)
-			throw std::runtime_error("location section needs to end with \";}\"");
-		while (file_copia.find_first_of("}") != file_copia.find_first_not_of(" "))
+		std::string	directive;
+		if (file.find_first_not_of(" ") != npos)
+			file = file.substr(file.find_first_not_of(" "));
+		directive = file.substr(0,file.find(" "));
+		if (directive == "location")
 		{
-			if (file_copia.find("}") == npos || file_copia.find("}") < file_copia.find(";") ||
-			    file_copia.find("}") < file_copia.find(";"))
-				throw std::runtime_error("expecting \";\" before end of section");
-			splitStringToMap(file_copia, mappa2);
-			i = file_copia.find_first_of(";");
-			file_copia = file_copia.substr(i + 1);
+			file = file.substr(8);
+			std::map<std::string, std::vector<std::string> > mappa2;
+			size_t pos1;
+			size_t pos2;
+			std::vector<size_t> candidates;
+			pos1 = file.find_first_not_of(" ");
+			pos2 = file.find("{");
+			if (pos2 == npos || file.substr(0, pos2).find(";") != npos)
+				throw std::runtime_error("location section need an argument and \"{\"");
+			if (pos2 == npos || pos1 == pos2)
+				throw std::runtime_error("location section need an argument and \"{\"");
+			std::string key = ft_trim(file.substr(pos1, pos2 - 1));
+			file = file.substr(pos2 + 1);
+			pos1 = file.find(";");
+			pos2 = file.find("}");
+			if (pos2 == npos)
+				throw std::runtime_error("location section needs to end with \"}\"");
+			while (file.find_first_not_of(' ') != std::string::npos && file[file.find_first_not_of(' ')] != '}')
+			{
+				splitStringToMap(file, mappa2);
+				i = file.find_first_of(";");
+				file = file.substr(i + 1);
+			}
+			if (mappa_location.find(key) != mappa_location.end())
+				throw std::runtime_error("location is duplicate: " + key);
+			if (key.find(" ") != npos)
+				throw std::runtime_error("location directive takes one argument and one block {}");
+			if (key.find(";") != npos)
+				throw std::runtime_error("directive \"location\" has no opening \"{\"");
+			file = file.substr(file.find_first_of("}") + 1);
+			mappa_location[key] = mappa2;
 		}
-		if (mappa_location.find(key) != mappa_location.end())
-			throw std::runtime_error("location is duplicate");
-		if (key.find(" ") != npos)
-			throw std::runtime_error("location directive takes one argument and one block {}");
-		if (key.find(";") != npos)
-			throw std::runtime_error("directive \"location\" has no opening \"{\"");
-		file_copia = file_copia.substr(file_copia.find_first_of("}") + 1);
-		mappa_location[key] = mappa2;
-	}
-	removeLocationInPlace(file);
-	i = file.find("}");
-	if (i == npos)
-		throw std::runtime_error(" unexpected end of file, expecting \"}\"");
-	std::map<std::string, std::vector<std::string> > mappa;
-	while (file.find("}") != file.find_first_not_of(" "))
-	{
-		splitStringToMap(file, mappa);
-		i = file.find_first_of(";");
-		file = file.substr(i + 1);
+		else
+		{
+			splitStringToMap(file, mappa);
+			i = file.find_first_of(";");
+			file = file.substr(i + 1);
+		}
 	}
 	validateserver(mappa, serverx);
 	validatelocation(mappa_location, serverx);
@@ -643,7 +614,7 @@ void parse(std::string file, std::vector<Server> &main_vector)
 	{
 		i = file.find_first_not_of(" ");
 		if (i == std::string::npos || file.compare(i, 6, "server"))
-			throw std::runtime_error("unknown directive in file");
+			throw std::runtime_error("The only directive in file should be \"server\", unknown directive in file: " + file.substr(file.find_first_not_of(" "), file.find_first_of(" ", file.find_first_not_of(" ")) - file.find_first_not_of(" ")));
 		file = file.substr(i + 6);
 		i = file.find_first_not_of(" ");
 		if (i == std::string::npos || file.compare(i, 1, "{"))
@@ -653,13 +624,14 @@ void parse(std::string file, std::vector<Server> &main_vector)
 		parseinserver(file, main_vector[j]);
 		j++;
 		i = file.find_first_not_of(" ");
-		if (file[i] != '}')  // forse superflua
+		if (file[i] != '}')
 			throw std::runtime_error(" unexpected end of file, expecting \"}\"");
 		file = file.substr(i + 1);
 	}
 	checkServerNames(main_vector);
 	//printServers(main_vector);
 }
+
 
 void readFileAsString(std::ifstream &file, std::vector<Server> &main_vector)
 {
