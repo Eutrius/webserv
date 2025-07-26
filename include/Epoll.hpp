@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
+#include <vector>
+#include "Socket.hpp"
 
 class Epoll
 {
@@ -16,11 +18,12 @@ class Epoll
 	Epoll(void);
 	~Epoll(void);
 
-	int addFd(int fd);
+	void addFd(int fd);
 	int removeFd(int fd);
 	int modifyFd(int fd, int events);
 	int wait(void);
 	struct epoll_event* getEvents(void);
+	void addFds(std::vector<Socket>& sockets);
 
    private:
 	int _epollFd;
