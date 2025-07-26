@@ -37,6 +37,9 @@ struct Server
 	std::map<std::string, Location> location;
 };
 
+typedef std::pair<int, int> t_host;
+typedef std::map<t_host, std::vector<Server> > t_serversMap;
+
 void readFileAsString(std::ifstream& file, std::vector<Server>& main_vector);
 int atoi_ip(const std::string& host);
 void printServers(const std::vector<Server>& servers);

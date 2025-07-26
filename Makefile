@@ -14,6 +14,7 @@ SRC = src/main.cpp \
 	  src/Socket.cpp \
 	  src/Request.cpp \
 	  src/Response.cpp \
+	  src/Controller.cpp \
 	  src/parser.cpp \
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)

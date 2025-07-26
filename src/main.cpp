@@ -1,21 +1,111 @@
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/epoll.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <set>
+#include <csignal>
+#include "Controller.hpp"
 #include "Epoll.hpp"
 #include "Request.hpp"
+#include "Response.hpp"
 #include "Socket.hpp"
-#include "map"
-#include "parser.hpp"
 
-#define BUFFER_SIZE 8192
+int serverState;
+static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap);
+static void handleSignal(int signal);
 
-static bool parseConfig(int argc, char const *argv[], std::vector<Server> &servers)
+int main(int argc, char const *argv[])
+{
+	t_serversMap serversMap;
+	if (!parseConfig(argc, argv, serversMap))
+		return (1);
+
+	std::vector<Socket> sockets = Socket::initSockets(serversMap);
+
+	Epoll epoll;
+	epoll.addFds(sockets);
+
+	if (sockets.empty())
+	{
+		std::cerr << "Webserv: no sockets created" << std::endl;
+		return (1);
+	}
+
+	Controller controller;
+	signal(SIGINT, handleSignal);
+	serverState = 1;
+	std::cout << "Server started" << std::endl;
+	while (serverState)
+	{
+		int nEvents = epoll.wait();
+		struct epoll_event *events = epoll.getEvents();
+		for (int i = 0; i < nEvents; i++)
+		{
+			int fd = events[i].data.fd;
+			uint32_t eventFlags = events[i].events;
+			if (eventFlags & (EPOLLHUP | EPOLLERR))
+			{
+				epoll.removeFd(fd);
+				controller.closeConnection(fd);
+				continue;
+			}
+
+			bool isServerFd = false;
+			size_t j;
+			for (j = 0; j < sockets.size(); j++)
+			{
+				if (fd == sockets[j].getFd())
+				{
+					isServerFd = true;
+					break;
+				}
+			}
+
+			if (isServerFd && (eventFlags & EPOLLIN))
+			{
+				int newFd = sockets[j].accept();
+				if (newFd > 0)
+				{
+					try
+					{
+						epoll.addFd(newFd);
+						controller.newConnection(newFd, sockets[j].getServers());
+					}
+					catch (std::exception &e)
+					{
+						std::cout << e.what() << std::endl;
+					}
+				}
+			}
+			else if (eventFlags & EPOLLIN)
+			{
+				if (controller.read(fd))
+				{
+					epoll.removeFd(fd);
+					controller.closeConnection(fd);
+				}
+
+				Connection &curr = controller.getConnection(fd);
+				if (checkBody(curr.request))
+				{
+					Request req(curr.request);
+					std::cout << curr.request << std::endl;
+					Response res;
+					curr.response = res.getCompleteResponse();
+					epoll.modifyFd(fd, EPOLLOUT);
+				}
+			}
+			else if (eventFlags & EPOLLOUT)
+			{
+				if (controller.write(fd))
+				{
+					epoll.removeFd(fd);
+					controller.closeConnection(fd);
+				}
+			}
+		}
+	}
+	Socket::closeSockets(sockets);
+	std::cout << "Server shutdown" << std::endl;
+	return (0);
+}
+
+static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 {
 	if (argc != 2)
 	{
@@ -33,6 +123,7 @@ static bool parseConfig(int argc, char const *argv[], std::vector<Server> &serve
 		std::cerr << "error3\n";
 		return (false);
 	}
+	std::vector<Server> servers;
 	try
 	{
 		readFileAsString(file, servers);
@@ -43,110 +134,20 @@ static bool parseConfig(int argc, char const *argv[], std::vector<Server> &serve
 		file.close();
 		return (false);
 	}
+
+	for (size_t i = 0; i < servers.size(); i++)
+	{
+		std::vector<t_host> listen = servers[i].listen;
+		for (size_t j = 0; j < listen.size(); j++)
+			serversMap[listen[j]].push_back(servers[i]);
+	}
+
 	file.close();
 	return (true);
 }
 
-int main(int argc, char const *argv[])
+static void handleSignal(int signal)
 {
-	std::vector<Server> servers;
-	if (!parseConfig(argc, argv, servers))
-		return (1);
-
-	std::set<std::pair<int, int> > uniqueListen;
-	for (size_t i = 0; i < servers.size(); i++)
-		uniqueListen.insert(servers[i].listen.begin(), servers[i].listen.end());
-
-	std::vector<Socket *> sockets;
-	try
-	{
-		std::set<std::pair<int, int> >::iterator it;
-		for (it = uniqueListen.begin(); it != uniqueListen.end(); ++it)
-		{
-			std::pair<int, int> listen = *it;
-			sockets.push_back(new Socket(listen.first, listen.second));
-		}
-	}
-	catch (std::exception &e)
-	{
-		std::cout << e.what() << std::endl;
-	}
-
-	Epoll epoll;
-	for (size_t i = 0; i < sockets.size(); i++)
-	{
-		int fd = sockets[i]->getFd();
-		epoll.add_fd(fd);
-	}
-
-	std::map<int, std::string> buffers;
-	char buffer[BUFFER_SIZE];
-	(void) buffer;
-	while (1)
-	{
-		int nEvents = epoll.wait();
-		struct epoll_event *events = epoll.getEvents();
-		for (int i = 0; i < nEvents; i++)
-		{
-			int fd = events[i].data.fd;
-			uint32_t eventFlags = events[i].events;
-			if (eventFlags & (EPOLLHUP | EPOLLERR))
-			{
-				epoll.remove_fd(fd);
-				buffers.erase(fd);
-				close(fd);
-				continue;
-			}
-
-			bool isServerFd = false;
-			size_t j;
-			for (j = 0; j < sockets.size(); j++)
-			{
-				if (events[i].data.fd == sockets[j]->getFd())
-				{
-					isServerFd = true;
-					break;
-				}
-			}
-
-			if (isServerFd && (eventFlags & EPOLLIN))
-			{
-				int clientFd = sockets[j]->accept();
-				if (clientFd > 0)
-					epoll.add_fd(clientFd);
-			}
-			else if (eventFlags & EPOLLIN)
-			{
-				char buffer[BUFFER_SIZE];
-				int bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
-				std::cout << buffer << std::endl;
-				if (bytes_read > 0)
-				{
-					buffers[fd].append(buffer, bytes_read);
-				}
-				else
-				{
-					epoll.remove_fd(fd);
-					buffers.erase(fd);
-					close(fd);
-				}
-				Request request(buffer);
-				if (buffer)
-				{
-					try
-					{
-						request.checkServer(servers);
-						request.printInfoRequest();
-					}
-					catch(const std::exception& e)
-					{
-						std::cerr << e.what() << '\n';
-					}
-
-				}
-
-			}
-		}
-	}
-	return (0);
+	(void) signal;
+	serverState = 0;
 }
