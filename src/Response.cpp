@@ -99,3 +99,46 @@ std::string Response::formatHeaders(int status_code, const std::string& content_
 
 	return (headers.str());
 }
+
+// std::string Response::buildResponse(Request req)
+// {
+// 	int status_code = 200;
+// 	std::string response_body;
+// 	std::string content_type = "text/html";
+// 	std::string location;
+// 	std::string script_path;
+//
+// 	if (cgi_executor.isCGIRequest(request, server_config, script_path))
+// 	{
+// 		response_body = cgi_executor.executeScript(request, script_path, server_config, status_code);
+// 	}
+// 	else if (request.method == "POST" && request.uri.compare(0, 7, "/upload") == 0)
+// 	{
+// 		bool success = upload_manager.handleUpload(request, server_config, status_code);
+// 		response_body = upload_manager.getUploadResponse(success, status_code);
+// 	}
+// 	else if (request.method == "GET" || request.method == "POST" || request.method == "DELETE")
+// 	{
+// 		std::string file_path;
+// 		response_body = file_handler.handleRequest(request, server_config, status_code, file_path);
+//
+// 		if (status_code == 200 && !file_path.empty())
+// 		{
+// 			content_type = getMimeType(file_path);
+// 		}
+// 	}
+// 	else
+// 	{
+// 		status_code = 405;
+// 		response_body = file_handler.getErrorPage(status_code, server_config);
+// 	}
+//
+// 	if (status_code >= 400)
+// 	{
+// 		response_body = file_handler.getErrorPage(status_code, server_config);
+// 		content_type = "text/html";
+// 	}
+//
+// 	std::string headers = formatHeaders(status_code, content_type, response_body.length(), location);
+// 	return (headers + response_body);
+// }

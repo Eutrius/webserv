@@ -1,64 +1,65 @@
 #pragma once
 
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <cctype>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <sys/stat.h>
-#include <unistd.h>
 #include "parser.hpp"
 
-struct	serverinfo
+struct serverInfo
 {
-	Server			_rightServer;
-	std::string		location;
-	std::string		link;
-	std::string		to_client;
+	Server _rightServer;
+	std::string location;
+	std::string link;
+	std::string to_client;
 };
 
-struct	requestinfo
+struct requestInfo
 {
-	std::string		URI;
-	std::string		query;
-	std::string		protocol;
-	std::string		hostname;
-	std::string		contentType;
-	std::string		contentLength;
-	std::string		connection;
-	std::string		formatAccepted;
-	std::string		body;
-	int				method;
-	int				_headerEnd;
-	int				status;
+	std::string URI;
+	std::string query;
+	std::string protocol;
+	std::string hostname;
+	std::string contentType;
+	std::string contentLength;
+	std::string connection;
+	std::string formatAccepted;
+	std::string body;
+	int method;
+	int _headerEnd;
+	int status;
 };
 
 class Request
 {
    public:
-		Request(std::string request);
-		~Request(void);
+	Request(std::string request);
+	~Request(void);
 
-		int getType(void) const;
-		void printInfoRequest(void);
-		void checkServer(std::vector<Server> server);
+	int getType(void) const;
+	requestInfo getInfo(void) const;
+	serverInfo getServerInfo(void) const;
 
-	private:
-		std::string findType(std::string request);
-		void 		findPort(std::string hostname);
-		void 		analizeRequestLine(std::string requestLine);
-		void 		lookForLocation(std::string location);
-		void 		rightFormatLocation(void);
-		void 		checkInvalidCharacters(std::string to_check);
-		void 		checkOnLocation(void);
-		void		bodyLength(void);
+	void printInfoRequest(void);
+	void checkServer(std::vector<Server> server);
 
-		requestinfo requestInfo;
-		serverinfo	serverInfo;
+   private:
+	std::string findType(std::string request);
+	void findPort(std::string hostname);
+	void analizeRequestLine(std::string requestLine);
+	void lookForLocation(std::string location);
+	void rightFormatLocation(void);
+	void checkInvalidCharacters(std::string to_check);
+	void checkOnLocation(void);
+	void bodyLength(void);
+
+	requestInfo _requestInfo;
+	serverInfo _serverInfo;
 };
-
-
 
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);

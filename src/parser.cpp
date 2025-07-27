@@ -216,7 +216,6 @@ void printServers(const std::vector<Server> &servers)
 	}
 }
 
-
 // -------------------------
 //		  CHECKERS
 // -------------------------
@@ -435,7 +434,8 @@ void removeLocationInPlace(std::string &input)
 	size_t pos = input.find("location ", 0);
 	size_t start_pos, end_pos;
 
-	while (input.find("location ", pos) != std::string::npos && (input.find("location ", pos) < input.find("}", pos) || input.find("}", pos) < input.find(";", pos)))
+	while (input.find("location ", pos) != std::string::npos &&
+	       (input.find("location ", pos) < input.find("}", pos) || input.find("}", pos) < input.find(";", pos)))
 	{
 		start_pos = input.find("location ", pos);  // to do: assicurarsi che prima ci sia " ;}"
 		end_pos = input.find_first_not_of(' ', start_pos);
@@ -451,19 +451,19 @@ void removeLocationInPlace(std::string &input)
 
 std::string removeComments(const std::string &input)
 {
-    std::istringstream iss(input);
-    std::ostringstream oss;
-    std::string line;
+	std::istringstream iss(input);
+	std::ostringstream oss;
+	std::string line;
 
-    while (std::getline(iss, line))
+	while (std::getline(iss, line))
 	{
-        size_t pos = line.find('#');
-        if (pos != std::string::npos)
-            line.erase(pos);
-        if (!line.empty())
-            oss << line << ' ';
-    }
-    return oss.str();
+		size_t pos = line.find('#');
+		if (pos != std::string::npos)
+			line.erase(pos);
+		if (!line.empty())
+			oss << line << ' ';
+	}
+	return (oss.str());
 }
 
 void splitStringToMap(const std::string &input, std::map<std::string, std::vector<std::string> > &result)
@@ -507,7 +507,9 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 
 	std::vector<std::string> newValues;
 
-	static const std::string permittedDirectives[] = {"listen", "server_name", "root", "index", "client_max_body_size", "methods", "autoindex", "upload_dir", "cgi_extension", "error_page", "return"};
+	static const std::string permittedDirectives[] = {
+	    "listen",     "server_name",   "root",       "index", "client_max_body_size", "methods", "autoindex",
+	    "upload_dir", "cgi_extension", "error_page", "return"};
 	static const std::vector<std::string> permittedList(permittedDirectives, permittedDirectives + 11);
 	if (std::find(permittedList.begin(), permittedList.end(), tokens[0]) == permittedList.end())
 		throw std::runtime_error("Unknown directive: " + tokens[0]);
@@ -545,7 +547,6 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 		result[key] = newValues;  // Se la chiave non esiste
 }
 
-
 void parseinserver(std::string &file, Server &serverx)
 {
 	size_t i;
@@ -555,10 +556,10 @@ void parseinserver(std::string &file, Server &serverx)
 	const size_t npos = std::string::npos;
 	while (file.find_first_not_of(' ') != std::string::npos && file[file.find_first_not_of(' ')] != '}')
 	{
-		std::string	directive;
+		std::string directive;
 		if (file.find_first_not_of(" ") != npos)
 			file = file.substr(file.find_first_not_of(" "));
-		directive = file.substr(0,file.find(" "));
+		directive = file.substr(0, file.find(" "));
 		if (directive == "location")
 		{
 			file = file.substr(8);
@@ -613,7 +614,10 @@ void parse(std::string file, std::vector<Server> &main_vector)
 	{
 		i = file.find_first_not_of(" ");
 		if (i == std::string::npos || file.compare(i, 6, "server"))
-			throw std::runtime_error("The only directive in file should be \"server\", unknown directive in file: " + file.substr(file.find_first_not_of(" "), file.find_first_of(" ", file.find_first_not_of(" ")) - file.find_first_not_of(" ")));
+			throw std::runtime_error(
+			    "The only directive in file should be \"server\", unknown directive in file: " +
+			    file.substr(file.find_first_not_of(" "),
+			                file.find_first_of(" ", file.find_first_not_of(" ")) - file.find_first_not_of(" ")));
 		file = file.substr(i + 6);
 		i = file.find_first_not_of(" ");
 		if (i == std::string::npos || file.compare(i, 1, "{"))
@@ -628,9 +632,8 @@ void parse(std::string file, std::vector<Server> &main_vector)
 		file = file.substr(i + 1);
 	}
 	checkServerNames(main_vector);
-	//printServers(main_vector);
+	// printServers(main_vector);
 }
-
 
 void readFileAsString(std::ifstream &file, std::vector<Server> &main_vector)
 {

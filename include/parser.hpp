@@ -1,13 +1,13 @@
 #pragma once
 #include <algorithm>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <exception>
 
 struct Location
 {

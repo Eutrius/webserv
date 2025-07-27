@@ -69,6 +69,7 @@ int main(int argc, char const *argv[])
 					catch (std::exception &e)
 					{
 						std::cout << e.what() << std::endl;
+						close(fd);
 					}
 				}
 			}
@@ -84,7 +85,9 @@ int main(int argc, char const *argv[])
 				if (checkBody(curr.request))
 				{
 					Request req(curr.request);
+					req.checkServer(curr.servers);
 					std::cout << curr.request << std::endl;
+					req.printInfoRequest();
 					Response res;
 					curr.response = res.getCompleteResponse();
 					epoll.modifyFd(fd, EPOLLOUT);
