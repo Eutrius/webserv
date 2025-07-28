@@ -18,12 +18,13 @@ class Epoll
 	Epoll(void);
 	~Epoll(void);
 
+	int getFd(void) const;
+	struct epoll_event* getEvents(void);
+
 	void addFd(int fd);
 	int removeFd(int fd);
 	int modifyFd(int fd, int events);
 	int wait(void);
-	struct epoll_event* getEvents(void);
-	void addFds(std::vector<Socket>& sockets);
 
    private:
 	int _epollFd;

@@ -8,12 +8,36 @@ Controller::~Controller(void)
 {
 }
 
-void Controller::newConnection(int fd, std::vector<Server> servers)
+void Controller::newServerConnection(Socket socket)
 {
-	Connection connection;
-	connection.lastActivity = time(NULL);
-	connection.servers = servers;
-	_connections[fd] = connection;
+	Connection curr;
+	curr.type = CON_SERVER;
+	curr.socket = socket;
+	curr.servers = socket.getServers();
+	_connections[socket.getFd()] = curr;
+}
+
+void Controller::newClientConnection(Epoll &epoll, int fd)
+{
+	Connection &server = _connections[fd];
+	int clientFd = server.socket.accept();
+	if (clientFd > 0)
+	{
+		try
+		{
+			epoll.addFd(clientFd);
+			Connection conn;
+			conn.type = CON_CLIENT;
+			conn.sent = 0;
+			conn.lastActivity = time(NULL);
+			conn.servers = server.servers;
+			_connections[clientFd] = conn;
+		}
+		catch (std::exception &e)
+		{
+			std::cout << e.what() << std::endl;
+		}
+	}
 }
 
 void Controller::closeConnection(int fd)
@@ -29,26 +53,30 @@ int Controller::read(int fd)
 	int bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
 	if (bytes_read > 0)
 	{
-		curr.request.append(buffer, bytes_read);
+		curr.readBuffer.append(buffer, bytes_read);
 		curr.lastActivity = time(NULL);
-		return (0);
 	}
-	return (1);
+	return (bytes_read);
 }
 
 int Controller::write(int fd)
 {
 	Connection &curr = _connections[fd];
-	int bytes_sent = send(fd, curr.response.c_str() + curr.sent, curr.response.length() - curr.sent, 0);
+	int bytes_sent = send(fd, curr.writeBuffer.c_str() + curr.sent, curr.writeBuffer.length() - curr.sent, 0);
 	if (bytes_sent > 0)
 	{
 		curr.sent += bytes_sent;
 		curr.lastActivity = time(NULL);
 	}
-	return (bytes_sent <= 0 || curr.sent > curr.response.length());
+	return (bytes_sent <= 0 || curr.sent > curr.writeBuffer.length());
 }
 
 Connection &Controller::getConnection(int fd)
 {
 	return (_connections[fd]);
+}
+
+con_type Controller::getConnectionTypeByFd(int fd)
+{
+	return (_connections[fd].type);
 }

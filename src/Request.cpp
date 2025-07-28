@@ -38,6 +38,16 @@ int Request::getType(void) const
 	return (_requestInfo.method);
 }
 
+serverInfo Request::getServerInfo(void) const
+{
+	return (_serverInfo);
+}
+
+requestInfo Request::getInfo(void) const
+{
+	return (_requestInfo);
+}
+
 std::string Request::findType(std::string request)
 {
 	int pos;
