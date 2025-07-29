@@ -314,9 +314,13 @@ void checkError_page(std::vector<std::string> vect, std::map<int, std::string> &
 void checkReturn(std::vector<std::string> vect, std::pair<int, std::string> &return_path, int key)
 {
 	std::ostringstream error_msg;
-	error_msg << "\"return\" value \"" << key << "\" must be between 0 and 999";
-	if (key < 0 || key > 999)
+	error_msg << "\"return\" value \"" << key << "\" must be between 100 and 599";
+	if (key < 100 || key > 599)
 		throw std::runtime_error(error_msg.str());
+	std::ostringstream error_msg2;
+	error_msg2 << "\"return\" value from 301 to 308 must have an url";
+	if (key >= 301 && key <= 308 && vect.size() != 2)
+		throw std::runtime_error(error_msg2.str());
 	std::pair<int, std::string> res;
 	res.first = key;
 	if (vect.size() == 2)

@@ -2,7 +2,6 @@
 #include "Controller.hpp"
 #include "Epoll.hpp"
 #include "Request.hpp"
-#include "Response.hpp"
 #include "Socket.hpp"
 
 int serverState;
@@ -71,11 +70,7 @@ int main(int argc, char const *argv[])
 				{
 					int bytes_read = controller.read(fd);
 					if (bytes_read == -1)
-					{
-						epoll.removeFd(fd);
-						controller.closeConnection(fd);
 						continue;
-					}
 
 					if (type & CON_CLIENT)
 					{
@@ -84,9 +79,10 @@ int main(int argc, char const *argv[])
 						{
 							Request req(curr.readBuffer);
 							req.checkServer(curr.servers);
-							Response res(req);
-							curr.writeBuffer = res.getCompleteResponse();
-							epoll.modifyFd(fd, EPOLLOUT);
+							if (controller.handleRequest(fd))
+								epoll.modifyFd(fd, EPOLLOUT);
+							else
+								epoll.modifyFd(fd, 0);
 						}
 					}
 					else if (bytes_read < BUFFER_SIZE && type & (CON_CGI | CON_FILE))
@@ -150,6 +146,7 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 
 	file.close();
+	printServers(servers);
 	return (true);
 }
 

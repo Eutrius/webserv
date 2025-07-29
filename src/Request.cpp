@@ -1,5 +1,9 @@
 #include "Request.hpp"
 
+Request::Request(void)
+{
+}
+
 Request::Request(std::string request)
 {
 	std::string adress;
@@ -33,17 +37,24 @@ Request::~Request(void)
 {
 }
 
+Request &Request::operator=(Request &other)
+{
+	_requestInfo = other._requestInfo;
+	_serverInfo = other._serverInfo;
+	return (*this);
+}
+
 int Request::getType(void) const
 {
 	return (_requestInfo.method);
 }
 
-serverInfo Request::getServerInfo(void) const
+serverInfo &Request::getServerInfo(void)
 {
 	return (_serverInfo);
 }
 
-requestInfo Request::getInfo(void) const
+requestInfo &Request::getInfo(void)
 {
 	return (_requestInfo);
 }
@@ -170,39 +181,54 @@ void Request::checkServer(std::vector<Server> server)
 			return;
 	}
 	lookForLocation(_requestInfo.URI);
-	checkOnLocation();
+	if (_requestInfo.status != 404)
+		checkOnLocation();
 }
 
 void Request::lookForLocation(std::string location)
 {
-	std::string temp;
-	temp = location;
+	std::string bestMatch = "";
 	std::map<std::string, Location>::iterator it;
 
 	for (it = _serverInfo._rightServer.location.begin(); it != _serverInfo._rightServer.location.end(); it++)
 	{
-		std::cout << it->first << std::endl;
-		if (location.find(it->first) != std::string::npos && it->first.length() > _serverInfo.location.length())
-			_serverInfo.location = it->first;
+		if (location.find(it->first) == 0)
+		{
+			if (it->first == "/")
+			{
+				if (it->first.length() > bestMatch.length())
+					bestMatch = it->first;
+			}
+			else if (location.length() == it->first.length() || location[it->first.length()] == '/')
+			{
+				if (it->first.length() > bestMatch.length())
+					bestMatch = it->first;
+			}
+		}
 	}
+	_serverInfo.location = bestMatch;
+	if (_serverInfo.location.empty())
+		_requestInfo.status = 404;
 }
 
 void Request::checkOnLocation(void)
 {
 	int pos;
+	_requestInfo.isRedirect = false;
 	// struct stat data;
 
-	if (_serverInfo._rightServer.location[_serverInfo.location].return_path.second != "")
+	if (_serverInfo._rightServer.location[_serverInfo.location].return_path.first != -1)
 	{
-		_requestInfo.status = 301;
+		_requestInfo.status = _serverInfo._rightServer.location[_serverInfo.location].return_path.first;
 		_serverInfo.to_client = _serverInfo._rightServer.location[_serverInfo.location].return_path.second;
+		_requestInfo.isRedirect = true;
 		return;
 	}
 	pos = _requestInfo.URI.find(_serverInfo.location);
 	_serverInfo.link = _requestInfo.URI;
 	_serverInfo.link.insert(pos, _serverInfo._rightServer.location[_serverInfo.location].root);
 	pos = _serverInfo.link.find(_serverInfo.location);
-	// serverInfo.link.replace(pos, serverInfo.location.length(), "");
+	_serverInfo.link.replace(pos, _serverInfo.location.length(), "");
 	if (std::atoi(_requestInfo.contentLength.c_str()) > _serverInfo._rightServer.client_max_body_size)
 	{
 		_requestInfo.status = 400;

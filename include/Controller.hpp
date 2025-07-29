@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 #include "Epoll.hpp"
+#include "Request.hpp"
+#include "Response.hpp"
+#include "Socket.hpp"
 #include "parser.hpp"
 
 #define BUFFER_SIZE 8192
@@ -28,6 +31,9 @@ struct Connection
 	std::vector<Server> servers;
 	Socket socket;
 	int targetFd;
+	bool isWaiting;
+	Request req;
+	Response res;
 };
 
 class Controller
@@ -39,6 +45,7 @@ class Controller
 	void newClientConnection(Epoll &epoll, int fd);
 	void newServerConnection(Socket socket);
 	void closeConnection(int fd);
+	int handleRequest(int fd);
 	int read(int fd);
 	int write(int fd);
 
