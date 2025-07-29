@@ -2,7 +2,6 @@
 #include "Controller.hpp"
 #include "Epoll.hpp"
 #include "Request.hpp"
-#include "Response.hpp"
 #include "Socket.hpp"
 
 int serverState;
@@ -16,9 +15,26 @@ int main(int argc, char const *argv[])
 		return (1);
 
 	std::vector<Socket> sockets = Socket::initSockets(serversMap);
-
+	Controller controller;
 	Epoll epoll;
-	epoll.addFds(sockets);
+	if (epoll.getFd() == -1)
+		return (1);
+
+	std::vector<Socket>::iterator it = sockets.begin();
+	while (it != sockets.end())
+	{
+		try
+		{
+			epoll.addFd(it->getFd());
+			controller.newServerConnection(*it);
+			it++;
+		}
+		catch (std::exception &e)
+		{
+			std::cout << e.what() << std::endl;
+			it = sockets.erase(it);
+		}
+	}
 
 	if (sockets.empty())
 	{
@@ -26,7 +42,6 @@ int main(int argc, char const *argv[])
 		return (1);
 	}
 
-	Controller controller;
 	signal(SIGINT, handleSignal);
 	serverState = 1;
 	std::cout << "Server started" << std::endl;
@@ -34,63 +49,48 @@ int main(int argc, char const *argv[])
 	{
 		int nEvents = epoll.wait();
 		struct epoll_event *events = epoll.getEvents();
+
 		for (int i = 0; i < nEvents; i++)
 		{
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
+
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
 			{
 				epoll.removeFd(fd);
 				controller.closeConnection(fd);
-				continue;
-			}
-
-			bool isServerFd = false;
-			size_t j;
-			for (j = 0; j < sockets.size(); j++)
-			{
-				if (fd == sockets[j].getFd())
-				{
-					isServerFd = true;
-					break;
-				}
-			}
-
-			if (isServerFd && (eventFlags & EPOLLIN))
-			{
-				int newFd = sockets[j].accept();
-				if (newFd > 0)
-				{
-					try
-					{
-						epoll.addFd(newFd);
-						controller.newConnection(newFd, sockets[j].getServers());
-					}
-					catch (std::exception &e)
-					{
-						std::cout << e.what() << std::endl;
-						close(fd);
-					}
-				}
 			}
 			else if (eventFlags & EPOLLIN)
 			{
-				if (controller.read(fd))
-				{
-					epoll.removeFd(fd);
-					controller.closeConnection(fd);
-				}
+				con_type type = controller.getConnectionTypeByFd(fd);
 
-				Connection &curr = controller.getConnection(fd);
-				if (checkBody(curr.request))
+				if (type & CON_SERVER)
+					controller.newClientConnection(epoll, fd);
+				else
 				{
-					Request req(curr.request);
-					req.checkServer(curr.servers);
-					std::cout << curr.request << std::endl;
-					req.printInfoRequest();
-					Response res;
-					curr.response = res.getCompleteResponse();
-					epoll.modifyFd(fd, EPOLLOUT);
+					int bytes_read = controller.read(fd);
+					if (bytes_read == -1)
+						continue;
+
+					if (type & CON_CLIENT)
+					{
+						Connection &curr = controller.getConnection(fd);
+						if (checkBody(curr.readBuffer))
+						{
+							Request req(curr.readBuffer);
+							req.checkServer(curr.servers);
+							if (controller.handleRequest(fd))
+								epoll.modifyFd(fd, EPOLLOUT);
+							else
+								epoll.modifyFd(fd, 0);
+						}
+					}
+					else if (bytes_read < BUFFER_SIZE && type & (CON_CGI | CON_FILE))
+					{
+						Connection &curr = controller.getConnection(fd);
+						Connection &target = controller.getConnection(curr.targetFd);
+						(void) target;
+					}
 				}
 			}
 			else if (eventFlags & EPOLLOUT)
@@ -146,6 +146,7 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 
 	file.close();
+	printServers(servers);
 	return (true);
 }
 

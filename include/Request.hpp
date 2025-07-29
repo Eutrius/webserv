@@ -32,17 +32,21 @@ struct requestInfo
 	int method;
 	int _headerEnd;
 	int status;
+	bool isRedirect;
 };
 
 class Request
 {
    public:
+	Request(void);
 	Request(std::string request);
 	~Request(void);
 
+	Request &operator=(Request &other);
+
 	int getType(void) const;
-	requestInfo getInfo(void) const;
-	serverInfo getServerInfo(void) const;
+	requestInfo &getInfo(void);
+	serverInfo &getServerInfo(void);
 
 	void printInfoRequest(void);
 	void checkServer(std::vector<Server> server);

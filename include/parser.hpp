@@ -37,6 +37,13 @@ struct Server
 	std::map<std::string, Location> location;
 };
 
+enum Methods
+{
+	GET = 1,
+	POST = 1 << 1,
+	DELETE = 1 << 2,
+};
+
 typedef std::pair<int, int> t_host;
 typedef std::map<t_host, std::vector<Server> > t_serversMap;
 
