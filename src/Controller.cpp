@@ -1,11 +1,40 @@
 #include "Controller.hpp"
 
-Controller::Controller(void)
+Controller::Controller(Epoll &epoll) : _epoll(epoll)
 {
 }
 
 Controller::~Controller(void)
 {
+	std::map<int, Connection>::iterator it = _connections.begin();
+	while (it != _connections.end())
+	{
+		std::map<int, Connection>::iterator curr = it++;
+		closeConnection(curr->first);
+	}
+}
+
+int Controller::initServers(std::vector<Socket> &sockets)
+{
+	std::vector<Socket>::iterator it = sockets.begin();
+	while (it != sockets.end())
+	{
+		try
+		{
+			_epoll.addFd(it->getFd());
+			newServerConnection(*it);
+			it++;
+		}
+		catch (std::exception &e)
+		{
+			std::cout << e.what() << std::endl;
+			it = sockets.erase(it);
+		}
+	}
+
+	if (sockets.empty())
+		return (1);
+	return (0);
 }
 
 void Controller::newServerConnection(Socket socket)
@@ -17,7 +46,15 @@ void Controller::newServerConnection(Socket socket)
 	_connections[socket.getFd()] = curr;
 }
 
-void Controller::newClientConnection(Epoll &epoll, int fd)
+void Controller::newCGIConnection(int fd, int targetFd)
+{
+	Connection curr;
+	curr.type = CON_CGI;
+	curr.targetFd = targetFd;
+	_connections[fd] = curr;
+}
+
+void Controller::newClientConnection(int fd)
 {
 	Connection &server = _connections[fd];
 	int clientFd = server.socket.accept();
@@ -25,7 +62,7 @@ void Controller::newClientConnection(Epoll &epoll, int fd)
 	{
 		try
 		{
-			epoll.addFd(clientFd);
+			_epoll.addFd(clientFd);
 			Connection conn;
 			conn.type = CON_CLIENT;
 			conn.sent = 0;
@@ -43,6 +80,7 @@ void Controller::newClientConnection(Epoll &epoll, int fd)
 
 void Controller::closeConnection(int fd)
 {
+	_epoll.removeFd(fd);
 	_connections.erase(fd);
 	close(fd);
 }
@@ -93,89 +131,70 @@ int Controller::handleRequest(int fd)
 	req.printInfoRequest();
 	curr.req = req;
 
-	Response res;
-
 	serverInfo &server = curr.req.getServerInfo();
 	requestInfo &request = curr.req.getInfo();
 	Location location = server._rightServer.location[server.location];
+
+	Response res;
 
 	if (request.isRedirect)
 	{
 		if (!server.to_client.empty())
 		{
-			res.handleRedirect(req);
+			res.handleRedirect(server, request);
 			curr.writeBuffer = res.getCompleteResponse();
 			return (1);
+		}
+	}
+	if (request.isCGI)
+	{
+		int cgiFD = res.handleCGI(server, request, location);
+		if (cgiFD != -1)
+		{
+			try
+			{
+				_epoll.addFd(cgiFD);
+				_epoll.modifyFd(fd, 0);
+				newCGIConnection(cgiFD, fd);
+				curr.res = res;
+				return (0);
+			}
+			catch (std::exception &e)
+			{
+				request.status = 500;
+				closeConnection(cgiFD);
+				std::cerr << e.what() << std::endl;
+			}
 		}
 	}
 	else if (request.status == 200)
 	{
 		if (request.method == GET)
 		{
-			if (Response::fileExists(server.link))
+			if (res.handleGet(server, request, location))
 			{
-				if (Response::isDirectory(server.link))
-				{
-					if (!request.URI.empty() && request.URI[request.URI.size() - 1] != '/')
-					{
-						request.status = 301;
-						server.to_client = request.URI + "/";
-						res.handleRedirect(curr.req);
-						curr.writeBuffer = res.getCompleteResponse();
-						return (1);
-					}
-
-					std::string link = server.link;
-					if (link[link.size() - 1] != '/')
-						link += '/';
-
-					for (size_t i = 0; i < location.index.size(); i++)
-					{
-						std::string path = link + location.index[i];
-						if (Response::fileExists(path) && !Response::isDirectory(path))
-						{
-							// TODO: serve the file
-							return (0);
-						}
-					}
-
-					if (location.autoindex)
-					{
-						request.status = res.generateAutoindex(server.link, request.URI);
-						if (request.status == 200)
-						{
-							res.generateHeader(request.status, "text/html", server.location);
-							curr.writeBuffer = res.getCompleteResponse();
-							return (1);
-						}
-					}
-					else
-						request.status = 403;
-				}
-				else
-				{
-					// TODO: serve the file
-					return (0);
-				}
+				curr.writeBuffer = res.getCompleteResponse();
+				return (1);
 			}
-			else
-				request.status = 404;
 		}
-		if (request.method == DELETE)
+		else if (request.method == POST)
 		{
-			if (Response::fileExists(server.link))
+			if (res.handlePost(request, location))
 			{
-				if (unlink(server.link.c_str()) == 0)
-					request.status = 204;
-				else
-					request.status = 403;
+				curr.writeBuffer = res.getCompleteResponse();
+				return (1);
 			}
-			else
-				request.status = 404;
 		}
+		else if (request.method == DELETE)
+			res.handleDelete(server, request);
 	}
 
-	// TODO: check error page
+	if (res.handleError(server, request, location))
+	{
+		curr.writeBuffer = res.getCompleteResponse();
+		return (1);
+	}
+
 	res.defaultHtmlBody(request.status);
 	curr.writeBuffer = res.getCompleteResponse();
 	return (1);

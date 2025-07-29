@@ -20,11 +20,9 @@ class Socket
 	std::vector<Server> getServers(void) const;
 
 	void init(t_host host, std::vector<Server> servers);
-	void close(void);
 	int accept(void);
 
 	static std::vector<Socket> initSockets(t_serversMap serverMaps);
-	static void closeSockets(std::vector<Socket> sockets);
 
    private:
 	int _fd;

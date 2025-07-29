@@ -18,7 +18,6 @@ enum con_type
 	CON_SERVER = 1,
 	CON_CLIENT = 1 << 1,
 	CON_CGI = 1 << 2,
-	CON_FILE = 1 << 3,
 };
 
 struct Connection
@@ -39,10 +38,12 @@ struct Connection
 class Controller
 {
    public:
-	Controller(void);
+	Controller(Epoll &epoll);
 	~Controller(void);
 
-	void newClientConnection(Epoll &epoll, int fd);
+	int initServers(std::vector<Socket> &sockets);
+	void newClientConnection(int fd);
+	void newCGIConnection(int fd, int targetFd);
 	void newServerConnection(Socket socket);
 	void closeConnection(int fd);
 	int handleRequest(int fd);
@@ -54,4 +55,5 @@ class Controller
 
    private:
 	std::map<int, Connection> _connections;
+	Epoll &_epoll;
 };
