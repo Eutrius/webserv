@@ -33,8 +33,8 @@ struct requestInfo
 	std::string filename;
 	std::string cookie;
 	std::string boundary;
-	std::string	cgiPath;
-	std::vector<std::pair <std::string, std::string> > _env;
+	std::string cgiPath;
+	std::vector<std::pair<std::string, std::string> > _env;
 	int method;
 	int _headerEnd;
 	int status;
@@ -69,13 +69,12 @@ class Request
 	void checkOnLocation(void);
 	void bodyLength(void);
 	void analizeHeader(std::string header, int curr_pos);
-	bool importantInfo(std::pair <std::string, std::string> value, std::string request);
-	std::string	parseContentType(std::string value, std::string line);
-	void	cleanFile(void);
-	void	checkDuplicate(std::string header);
-	void	checkCGI(void);
-	void	checkQuery(void);
-
+	bool importantInfo(std::pair<std::string, std::string> value, std::string request);
+	std::string parseContentType(std::string value, std::string line);
+	void cleanFile(void);
+	void checkDuplicate(std::string header);
+	void checkCGI(void);
+	void checkQuery(void);
 
 	requestInfo _requestInfo;
 	serverInfo _serverInfo;
@@ -83,5 +82,5 @@ class Request
 
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);
-std::pair <std::string, std::string> parse(std::string line);
-std::string	removeQuotes(std::string& str);
+std::pair<std::string, std::string> parse(std::string line);
+std::string removeQuotes(std::string &str);

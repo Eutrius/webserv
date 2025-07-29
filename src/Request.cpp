@@ -1,14 +1,18 @@
 #include "Request.hpp"
 
 Request::Request(void)
-{}
+{
+}
 
 Request::Request(std::string request, std::vector<Server> server)
 {
 	std::string adress;
 	int curr_pos = 0;
+
 	_requestInfo.status = 200;
 	std::string line = request.substr(0, request.find("\n"));
+	_requestInfo.isCGI = false;
+	_requestInfo.isRedirect = false;
 
 	try
 	{
@@ -144,7 +148,7 @@ void Request::rightFormatLocation(void)
 	checkCGI();
 }
 
-void	Request::checkQuery(void)
+void Request::checkQuery(void)
 {
 	size_t pos;
 
@@ -158,7 +162,7 @@ void	Request::checkQuery(void)
 	}
 }
 
-void	Request::checkCGI(void)
+void Request::checkCGI(void)
 {
 	size_t pos;
 	std::string cgi[3] = {".py", ".php", ".sh"};
@@ -172,7 +176,7 @@ void	Request::checkCGI(void)
 			pos = _requestInfo.URI.find("/", pos);
 			_requestInfo.cgiPath.append(_requestInfo.URI, pos);
 			_requestInfo.URI.erase(pos);
-			break ;
+			break;
 		}
 		else
 			_requestInfo.cgiPath = "";
@@ -183,11 +187,11 @@ void	Request::checkCGI(void)
 //		HEADER
 //-------------------
 
-void	Request::analizeHeader(std::string header, int curr_pos)
+void Request::analizeHeader(std::string header, int curr_pos)
 {
-	std::string	line;
+	std::string line;
 	int pos;
-	std::pair <std::string, std::string> value;
+	std::pair<std::string, std::string> value;
 
 	pos = header.find("Host:");
 	if (pos == -1)
@@ -213,9 +217,9 @@ void	Request::analizeHeader(std::string header, int curr_pos)
 	}
 }
 
-std::pair <std::string, std::string> parse(std::string line)
+std::pair<std::string, std::string> parse(std::string line)
 {
-	std::pair <std::string, std::string> value;
+	std::pair<std::string, std::string> value;
 	int begin = 0;
 	int end;
 
@@ -236,7 +240,7 @@ std::pair <std::string, std::string> parse(std::string line)
 	return (value);
 }
 
-bool	Request::importantInfo(std::pair <std::string, std::string> value, std::string request)
+bool Request::importantInfo(std::pair<std::string, std::string> value, std::string request)
 {
 	if (value.first == "Connection")
 	{
@@ -274,7 +278,7 @@ bool	Request::importantInfo(std::pair <std::string, std::string> value, std::str
 	return (true);
 }
 
-void	Request::checkDuplicate(std::string header)
+void Request::checkDuplicate(std::string header)
 {
 	if (!header.empty())
 	{
@@ -283,10 +287,10 @@ void	Request::checkDuplicate(std::string header)
 	}
 }
 
-std::string	Request::parseContentType(std::string value, std::string line)
+std::string Request::parseContentType(std::string value, std::string line)
 {
 	int pos;
-	int	end;
+	int end;
 
 	pos = line.find("boundary=");
 	if (pos != -1)
@@ -312,7 +316,7 @@ void Request::findPort(std::string line)
 //		BODY
 //---------------------
 
-void Request::bodyLength()
+void Request::bodyLength(void)
 {
 	int pos;
 	int end;
@@ -331,9 +335,9 @@ void Request::bodyLength()
 	}
 }
 
-void	Request::cleanFile(void)
+void Request::cleanFile(void)
 {
-	int	end;
+	int end;
 	int begin;
 
 	begin = _requestInfo.body.find("\r\n\r\n");
@@ -341,7 +345,7 @@ void	Request::cleanFile(void)
 	{
 		begin += 4;
 		end = _requestInfo.body.rfind(_requestInfo.boundary);
-		_requestInfo.body =  _requestInfo.body.substr(begin, end - begin - 8);
+		_requestInfo.body = _requestInfo.body.substr(begin, end - begin - 8);
 	}
 }
 
@@ -351,7 +355,7 @@ void	Request::cleanFile(void)
 
 void Request::checkServer(std::vector<Server> server)
 {
-	int	check = 0;
+	int check = 0;
 
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
@@ -386,8 +390,7 @@ void Request::lookForLocation(std::string location)
 void Request::checkOnLocation(void)
 {
 	int pos;
-	int	end;
-	_requestInfo.isRedirect = false;
+	int end;
 
 	if (_serverInfo._rightServer.location[_serverInfo.location].return_path.first != -1)
 	{
@@ -498,7 +501,7 @@ std::string findInfo(std::string request, std::string toFind)
 	return (result);
 }
 
-std::string	removeQuotes(std::string& str)
+std::string removeQuotes(std::string &str)
 {
 	std::string result;
 

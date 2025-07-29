@@ -35,12 +35,9 @@ void Epoll::addFd(int fd)
 	std::cout << "Epoll added" << std::endl;
 }
 
-int Epoll::removeFd(int fd)
+void Epoll::removeFd(int fd)
 {
-	int nr_fd;
-
-	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
-	return (nr_fd);
+	epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
 }
 
 int Epoll::modifyFd(int fd, int events)

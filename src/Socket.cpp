@@ -15,11 +15,6 @@ Socket &Socket::operator=(const Socket &other)
 	return (*this);
 }
 
-void Socket::close(void)
-{
-	::close(_fd);
-}
-
 void Socket::init(t_host host, std::vector<Server> servers)
 {
 	struct sockaddr_in address;
@@ -100,10 +95,4 @@ std::vector<Socket> Socket::initSockets(t_serversMap serverMap)
 		}
 	}
 	return (sockets);
-}
-
-void Socket::closeSockets(std::vector<Socket> sockets)
-{
-	for (std::vector<Socket>::iterator it = sockets.begin(); it != sockets.end(); it++)
-		it->close();
 }

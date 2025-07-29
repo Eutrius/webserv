@@ -11,35 +11,20 @@ static void handleSignal(int signal);
 int main(int argc, char const *argv[])
 {
 	t_serversMap serversMap;
-	Cookie		cookie;
+	Cookie cookie;
 	if (!parseConfig(argc, argv, serversMap))
 		return (1);
 
 	std::vector<Socket> sockets = Socket::initSockets(serversMap);
-	Controller controller;
+
 	Epoll epoll;
 	if (epoll.getFd() == -1)
 		return (1);
 
-	std::vector<Socket>::iterator it = sockets.begin();
-	while (it != sockets.end())
+	Controller controller(epoll);
+	if (controller.initServers(sockets))
 	{
-		try
-		{
-			epoll.addFd(it->getFd());
-			controller.newServerConnection(*it);
-			it++;
-		}
-		catch (std::exception &e)
-		{
-			std::cout << e.what() << std::endl;
-			it = sockets.erase(it);
-		}
-	}
-
-	if (sockets.empty())
-	{
-		std::cerr << "Webserv: no sockets created" << std::endl;
+		std::cerr << "Webserv: no server created" << std::endl;
 		return (1);
 	}
 
@@ -57,16 +42,13 @@ int main(int argc, char const *argv[])
 			uint32_t eventFlags = events[i].events;
 
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
-			{
-				epoll.removeFd(fd);
 				controller.closeConnection(fd);
-			}
 			else if (eventFlags & EPOLLIN)
 			{
 				con_type type = controller.getConnectionTypeByFd(fd);
 
 				if (type & CON_SERVER)
-					controller.newClientConnection(epoll, fd);
+					controller.newClientConnection(fd);
 				else
 				{
 					int bytes_read = controller.read(fd);
@@ -90,25 +72,26 @@ int main(int argc, char const *argv[])
 							cookie.printClients();
 						}
 					}
-					else if (bytes_read < BUFFER_SIZE && type & (CON_CGI | CON_FILE))
+					else if (bytes_read < BUFFER_SIZE && type & CON_CGI)
 					{
 						Connection &curr = controller.getConnection(fd);
 						Connection &target = controller.getConnection(curr.targetFd);
-						(void) target;
+						Response &res = target.res;
+						res.setBody(curr.readBuffer);
+						res.generateHeader(200, target.req.getServerInfo().link, target.req.getServerInfo().location);
+						target.writeBuffer = res.getCompleteResponse();
+						epoll.modifyFd(curr.targetFd, EPOLLOUT);
+						controller.closeConnection(fd);
 					}
 				}
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
 				if (controller.write(fd))
-				{
-					epoll.removeFd(fd);
 					controller.closeConnection(fd);
-				}
 			}
 		}
 	}
-	Socket::closeSockets(sockets);
 	std::cout << "Server shutdown" << std::endl;
 	return (0);
 }
