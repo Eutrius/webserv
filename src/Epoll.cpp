@@ -2,57 +2,68 @@
 
 Epoll::Epoll(void)
 {
-	epfd = epoll_create(1);
-	if (epfd == -1)
-		std::cout << "It was not possible to create the epoll" << std::endl;
-	else
-		std::cout << "Epoll created" << std::endl;
+	_epollFd = epoll_create(1);
+	if (_epollFd == -1)
+		std::cerr << "Epoll: failed to create epoll" << std::endl;
 }
 
 Epoll::~Epoll(void)
 {
-	close(epfd);
+	close(_epollFd);
 }
 
-int Epoll::add_fd(int fd)
+int Epoll::getFd(void) const
 {
-	int nr_fd;
-	struct epoll_event ev;
-
-	ev.events = EPOLLIN | EPOLLOUT;
-	ev.data.fd = fd;
-	nr_fd = epoll_ctl(this->epfd, EPOLL_CTL_ADD, fd, &ev);
-	if (nr_fd == -1)
-		std::cout << "Failed to add fd to epoll" << std::endl;
-	else
-		std::cout << "Fd added to epoll" << std::endl;
-	return (nr_fd);
-}
-
-int Epoll::remove_fd(int fd)
-{
-	int nr_fd;
-
-	nr_fd = epoll_ctl(this->epfd, EPOLL_CTL_DEL, fd, NULL);
-	return (nr_fd);
-}
-
-int Epoll::wait(void)
-{
-	int check;
-
-	check = epoll_wait(this->epfd, events, 1024, -1);
-	if (check == -1)
-		std::cout << "Problems with wait" << std::endl;
-	return (check);
-}
-
-int Epoll::getEpfd(void) const
-{
-	return (this->epfd);
+	return (_epollFd);
 }
 
 struct epoll_event* Epoll::getEvents(void)
 {
-	return (events);
+	return (_events);
+}
+
+void Epoll::addFd(int fd)
+{
+	int nr_fd;
+	struct epoll_event ev;
+
+	ev.events = EPOLLIN;
+	ev.data.fd = fd;
+	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev);
+	if (nr_fd == -1)
+		throw std::runtime_error("Epoll: failed to add fd to epoll");
+	std::cout << "Epoll added" << std::endl;
+}
+
+int Epoll::removeFd(int fd)
+{
+	int nr_fd;
+
+	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
+	return (nr_fd);
+}
+
+int Epoll::modifyFd(int fd, int events)
+{
+	struct epoll_event ev;
+	ev.events = events;
+	ev.data.fd = fd;
+
+	if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) < 0)
+		throw std::runtime_error("Epoll: failed to modify fd event in epoll");
+	return (0);
+}
+
+int Epoll::wait(void)
+{
+	int nEvents;
+
+	nEvents = epoll_wait(this->_epollFd, _events, 1024, -1);
+	if (nEvents == -1)
+	{
+		if (errno == EINTR)
+			return (nEvents);
+		std::cerr << "Epoll: error during epoll wait" << std::endl;
+	}
+	return (nEvents);
 }

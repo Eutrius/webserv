@@ -2,13 +2,14 @@
 
 #include <fcntl.h>
 #include <netinet/in.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
+#include <vector>
+#include "Socket.hpp"
 
 class Epoll
 {
@@ -16,13 +17,15 @@ class Epoll
 	Epoll(void);
 	~Epoll(void);
 
-	int add_fd(int fd);
-	int remove_fd(int fd);
-	int wait(void);
-	int getEpfd(void) const;
+	int getFd(void) const;
 	struct epoll_event* getEvents(void);
 
+	void addFd(int fd);
+	int removeFd(int fd);
+	int modifyFd(int fd, int events);
+	int wait(void);
+
    private:
-	int epfd;
-	struct epoll_event events[1024];
+	int _epollFd;
+	struct epoll_event _events[1024];
 };

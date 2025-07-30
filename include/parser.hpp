@@ -1,13 +1,13 @@
 #pragma once
 #include <algorithm>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <exception>
 
 struct Location
 {
@@ -36,6 +36,16 @@ struct Server
 	std::map<int, std::string> error_page;  // must be between 300 and 599
 	std::map<std::string, Location> location;
 };
+
+enum Methods
+{
+	GET = 1,
+	POST = 1 << 1,
+	DELETE = 1 << 2,
+};
+
+typedef std::pair<int, int> t_host;
+typedef std::map<t_host, std::vector<Server> > t_serversMap;
 
 void readFileAsString(std::ifstream& file, std::vector<Server>& main_vector);
 int atoi_ip(const std::string& host);
