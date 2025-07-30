@@ -78,11 +78,9 @@ int main(int argc, char const *argv[])
 						if (checkBody(curr.readBuffer))
 						{
 							Request req(curr.readBuffer);
-							std::cout << curr.readBuffer << std::endl;
 							try
 							{
 								req.checkServer(curr.servers);
-								req.printInfoRequest();
 							}
 							catch(const std::exception& e)
 							{
@@ -156,7 +154,6 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 
 	file.close();
-	printServers(servers);
 	return (true);
 }
 

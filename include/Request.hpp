@@ -31,6 +31,7 @@ struct requestInfo
 	std::string body;
 	std::string filename;
 	std::string cookie;
+	std::string boundary;
 	int method;
 	int _headerEnd;
 	int status;
@@ -61,9 +62,11 @@ class Request
 	void rightFormatLocation(void);
 	void checkInvalidCharacters(std::string to_check);
 	void checkOnLocation(void);
-	void bodyLength(void);
+	void bodyLength(std::string request);
 	void analizeHeader(std::string header, int curr_pos);
-	bool importantInfo(std::pair <std::string, std::string> value);
+	bool importantInfo(std::pair <std::string, std::string> value, std::string request);
+	std::string	parseContentType(std::string value, std::string line);
+	void	cleanFile(void);
 
 	std::vector<std::pair <std::string, std::string> > _env;
 	requestInfo _requestInfo;
