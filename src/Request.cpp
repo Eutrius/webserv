@@ -214,8 +214,8 @@ void Request::lookForLocation(std::string location)
 void Request::checkOnLocation(void)
 {
 	int pos;
+	int	end;
 	_requestInfo.isRedirect = false;
-	// struct stat data;
 
 	if (_serverInfo._rightServer.location[_serverInfo.location].return_path.first != -1)
 	{
@@ -228,7 +228,11 @@ void Request::checkOnLocation(void)
 	_serverInfo.link = _serverInfo._rightServer.location[_serverInfo.location].root;
 	if (_serverInfo.location == "/")
 		pos -= 1;
-	_serverInfo.link.append(_requestInfo.URI, pos + _serverInfo.location.length());
+	end = _requestInfo.URI.find("/", pos + 1);
+	if (_serverInfo.link[_serverInfo.link.length() - 1] != '/')
+		_serverInfo.link.append("/");
+	if (end != -1)
+		_serverInfo.link.append(_requestInfo.URI, end + 1);
 	if (std::atoi(_requestInfo.contentLength.c_str()) > _serverInfo._rightServer.client_max_body_size)
 	{
 		_requestInfo.status = 400;
@@ -264,7 +268,6 @@ void	Request::analizeHeader(std::string header, int curr_pos)
 
 	while (curr_pos < _requestInfo._headerEnd)
 	{
-		std::cout << header << std::endl;
 		pos = header.find("\n");
 		if (pos == -1)
 		{
