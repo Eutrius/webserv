@@ -7,25 +7,37 @@ Request::Request(void)
 Request::Request(std::string request)
 {
 	std::string adress;
+	int	pos;
+	int	end;
+	int curr_pos = 0;
 	_requestInfo.status = 200;
-	std::string requestLine = request.substr(0, request.find("\n"));
+	std::string line = request.substr(0, request.find("\n"));
 
 	try
 	{
-		analizeRequestLine(requestLine);
-		adress = findInfo(request, "Host:");
-		if (adress == "")
+		_requestInfo._headerEnd = request.find("\r\n\r\n");
+		_requestInfo.body = request.substr(_requestInfo._headerEnd + 4);
+		if (_requestInfo._headerEnd == -1)
+		{
+			_requestInfo.status = 400;
+			throw std::runtime_error("Bad request: No end of file\n");
+		}
+		pos = request.find("filename=");
+		if (pos != -1)
+		{
+			end = request.find("\r", pos);
+			_requestInfo.filename.append(request, pos + 9, end - 1);
+		}
+		analizeRequestLine(line);
+		curr_pos += line.length() + 1;
+		request = request.substr(curr_pos);
+		pos = request.find("Host:");
+		if (pos == -1)
 		{
 			_requestInfo.status = 400;
 			throw std::runtime_error("Bad request: Host not found\n");
 		}
-		findPort(adress);
-		_requestInfo.connection = findInfo(request, "Connection:");
-		_requestInfo.formatAccepted = findInfo(request, "Accept:");
-		_requestInfo.contentLength = findInfo(request, "Content-Length");
-		_requestInfo._headerEnd = request.find("\r\n\r\n");
-		_requestInfo.body = request.substr(_requestInfo._headerEnd + 4);
-		_requestInfo.contentType = findInfo(request, "Content-Type");
+		analizeHeader(request, curr_pos);
 	}
 	catch (std::exception &error)
 	{
@@ -85,14 +97,13 @@ std::string Request::findType(std::string request)
 	throw std::runtime_error("Method not allowed\n");
 }
 
-void Request::findPort(std::string adress)
+void Request::findPort(std::string line)
 {
 	int pos;
-	std::string port;
 
-	pos = adress.find(":");
+	pos = line.find(":");
 	if (pos == -1)
-		_requestInfo.hostname = adress;
+		_requestInfo.hostname = line;
 }
 
 void Request::bodyLength(void)
@@ -108,6 +119,7 @@ void Request::bodyLength(void)
 		throw std::runtime_error("Bad request: no end of file\n");
 	}
 }
+
 void Request::analizeRequestLine(std::string requestLine)
 {
 	std::string protocol;
@@ -173,13 +185,19 @@ void Request::checkInvalidCharacters(std::string to_check)
 
 void Request::checkServer(std::vector<Server> server)
 {
+	int	check = 0;
+
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it = server[i];
-		_serverInfo._rightServer = it;
 		if (std::find(it.server_name.begin(), it.server_name.end(), _requestInfo.hostname) != it.server_name.end())
-			return;
+		{
+			check = 1;
+			_serverInfo._rightServer = it;
+		}
 	}
+	if (check == 0)
+		_serverInfo._rightServer = server[0];
 	lookForLocation(_requestInfo.URI);
 	if (_requestInfo.status != 404)
 		checkOnLocation();
@@ -192,21 +210,9 @@ void Request::lookForLocation(std::string location)
 
 	for (it = _serverInfo._rightServer.location.begin(); it != _serverInfo._rightServer.location.end(); it++)
 	{
-		if (location.find(it->first) == 0)
-		{
-			if (it->first == "/")
-			{
-				if (it->first.length() > bestMatch.length())
-					bestMatch = it->first;
-			}
-			else if (location.length() == it->first.length() || location[it->first.length()] == '/')
-			{
-				if (it->first.length() > bestMatch.length())
-					bestMatch = it->first;
-			}
-		}
+		if (location.find(it->first) != std::string::npos && it->first.length() > _serverInfo.location.length())
+			_serverInfo.location = it->first;
 	}
-	_serverInfo.location = bestMatch;
 	if (_serverInfo.location.empty())
 		_requestInfo.status = 404;
 }
@@ -214,8 +220,8 @@ void Request::lookForLocation(std::string location)
 void Request::checkOnLocation(void)
 {
 	int pos;
+	int	end;
 	_requestInfo.isRedirect = false;
-	// struct stat data;
 
 	if (_serverInfo._rightServer.location[_serverInfo.location].return_path.first != -1)
 	{
@@ -225,10 +231,14 @@ void Request::checkOnLocation(void)
 		return;
 	}
 	pos = _requestInfo.URI.find(_serverInfo.location);
-	_serverInfo.link = _requestInfo.URI;
-	_serverInfo.link.insert(pos, _serverInfo._rightServer.location[_serverInfo.location].root);
-	pos = _serverInfo.link.find(_serverInfo.location);
-	_serverInfo.link.replace(pos, _serverInfo.location.length(), "");
+	_serverInfo.link = _serverInfo._rightServer.location[_serverInfo.location].root;
+	if (_serverInfo.location == "/")
+		pos -= 1;
+	end = _requestInfo.URI.find("/", pos + 1);
+	if (_serverInfo.link[_serverInfo.link.length() - 1] != '/')
+		_serverInfo.link.append("/");
+	if (end != -1)
+		_serverInfo.link.append(_requestInfo.URI, end + 1);
 	if (std::atoi(_requestInfo.contentLength.c_str()) > _serverInfo._rightServer.client_max_body_size)
 	{
 		_requestInfo.status = 400;
@@ -239,14 +249,51 @@ void Request::checkOnLocation(void)
 		_requestInfo.status = 405;
 		throw std::runtime_error("Method not Allowed\n");
 	}
-	// stat(info["link"].c_str(), &data);
-	// if (data.st_mode & S_IFREG)
-	// {
-	// 	info["file"] = info["link"].substr(info["link"].rfind("\\"));
-	// 	info["link"].erase(info["link"].rfind("\\"));
-	// }
-	// if (data->st_mode & S_IFDIR  && (data->st_mode))
 }
+
+bool	Request::importantInfo(std::pair <std::string, std::string> value)
+{
+	if (value.first == "Connection")
+		_requestInfo.connection = value.second;
+	else if (value.first == "Accept")
+		_requestInfo.formatAccepted = value.second;
+	else if (value.first == "Content-Length")
+		_requestInfo.contentLength = value.second;
+	else if (value.first == "Content-Type")
+		_requestInfo.contentType = value.second;
+	else if (value.first == "Host")
+		findPort(value.second);
+	else if (value.first == "Cookie")
+		_requestInfo.cookie = value.second;
+	else
+		return (false);
+	return (true);
+}
+
+void	Request::analizeHeader(std::string header, int curr_pos)
+{
+	std::string	line;
+	int pos;
+	std::pair <std::string, std::string> value;
+
+	while (curr_pos < _requestInfo._headerEnd)
+	{
+		pos = header.find("\n");
+		if (pos == -1)
+		{
+			_requestInfo.status = 400;
+			throw std::runtime_error("Bad Request\n");
+		}
+		line = header.substr(0, pos);
+		value = parse(line);
+		if (importantInfo(value) == false)
+			_env.push_back(value);
+		curr_pos += line.length() + 1;
+		if (curr_pos < _requestInfo._headerEnd)
+			header = header.substr(line.length() + 1);
+	}
+}
+
 
 void Request::printInfoRequest(void)
 {
@@ -264,8 +311,9 @@ void Request::printInfoRequest(void)
 	std::cout << "CONTENT TYPE: " << _requestInfo.contentType << std::endl;
 	std::cout << "QUERY: " << _requestInfo.query << std::endl;
 	std::cout << "FILE TO CLIENT: " << _serverInfo.to_client << std::endl;
-	std::cout << "STATUS: " << _requestInfo.status << std::endl << std::endl;
-	// printServers(temp);
+	std::cout << "STATUS: " << _requestInfo.status << std::endl;
+	std::cout << "FILENAME :" << _requestInfo.filename << std::endl;
+	//printServers(temp);
 }
 
 bool checkBody(std::string request)
@@ -282,6 +330,29 @@ bool checkBody(std::string request)
 	if ((int) body.length() < bodyLength)
 		return (false);
 	return (true);
+}
+
+std::pair <std::string, std::string> parse(std::string line)
+{
+	std::pair <std::string, std::string> value;
+	int begin = 0;
+	int end;
+
+	while (line[begin] == ' ' && line[begin] != '\r' && line[begin] != '\n')
+		begin++;
+	if (line[begin] == '\r' || line[begin] == '\n')
+		throw std::runtime_error("Bad request\n");
+	end = begin + 1;
+	while (line[end] != ':' && line[end] != '\r' && line[end] != '\n')
+		end++;
+	value.first.append(line, begin, end - begin);
+	begin = end;
+	while ((line[begin] == ' ' || line[begin] == ':') && line[begin] != '\r' && line[begin] != '\n')
+		begin++;
+	while (line[end] != '\n' && line[end] != '\r')
+		end++;
+	value.second.append(line, begin, end - begin);
+	return (value);
 }
 
 std::string findInfo(std::string request, std::string toFind)
