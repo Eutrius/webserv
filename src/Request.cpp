@@ -27,7 +27,7 @@ Request::Request(std::string request)
 		{
 			end = request.find("\n", pos);
 			_requestInfo.filename.append(request, pos + 9, end - pos - 10);
-			std::cout << _requestInfo.filename.length() << std::endl;
+			_requestInfo.filename = removeQuotes(_requestInfo.filename);
 		}
 		analizeRequestLine(line);
 		curr_pos += line.length() + 1;
@@ -415,5 +415,16 @@ std::string findInfo(std::string request, std::string toFind)
 	while (request[end] != ' ' && request[end] != '\n' && request[end] != '\r')
 		end++;
 	result.append(request, begin + 1, end - begin - 1);
+	return (result);
+}
+
+std::string	removeQuotes(std::string& str)
+{
+	std::string result;
+
+	if (str[str.length() - 1] == '"')
+		str.erase(str.length() - 1);
+	if (str[0] == '"')
+		result.append(str, 1);
 	return (result);
 }

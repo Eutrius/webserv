@@ -76,3 +76,4 @@ class Request
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);
 std::pair <std::string, std::string> parse(std::string line);
+std::string	removeQuotes(std::string& str);
