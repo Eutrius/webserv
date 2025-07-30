@@ -30,6 +30,7 @@ struct requestInfo
 	std::string formatAccepted;
 	std::string body;
 	std::string filename;
+	std::string cookie;
 	int method;
 	int _headerEnd;
 	int status;

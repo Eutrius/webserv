@@ -78,7 +78,17 @@ int main(int argc, char const *argv[])
 						if (checkBody(curr.readBuffer))
 						{
 							Request req(curr.readBuffer);
-							req.checkServer(curr.servers);
+							std::cout << curr.readBuffer << std::endl;
+							try
+							{
+								req.checkServer(curr.servers);
+								req.printInfoRequest();
+							}
+							catch(const std::exception& e)
+							{
+								std::cerr << e.what() << '\n';
+								continue ;
+							}
 							if (controller.handleRequest(fd))
 								epoll.modifyFd(fd, EPOLLOUT);
 							else

@@ -8,6 +8,7 @@ Request::Request(std::string request)
 {
 	std::string adress;
 	int	pos;
+	int	end;
 	int curr_pos = 0;
 	_requestInfo.status = 200;
 	std::string line = request.substr(0, request.find("\n"));
@@ -15,10 +16,17 @@ Request::Request(std::string request)
 	try
 	{
 		_requestInfo._headerEnd = request.find("\r\n\r\n");
+		_requestInfo.body = request.substr(_requestInfo._headerEnd + 4);
 		if (_requestInfo._headerEnd == -1)
 		{
 			_requestInfo.status = 400;
 			throw std::runtime_error("Bad request: No end of file\n");
+		}
+		pos = request.find("filename=");
+		if (pos != -1)
+		{
+			end = request.find("\r", pos);
+			_requestInfo.filename.append(request, pos + 9, end - 1);
 		}
 		analizeRequestLine(line);
 		curr_pos += line.length() + 1;
@@ -29,13 +37,7 @@ Request::Request(std::string request)
 			_requestInfo.status = 400;
 			throw std::runtime_error("Bad request: Host not found\n");
 		}
-		line = request.substr(pos, request.find("\n"));
-		findPort(line);
-		curr_pos += line.length() + 1;
-		request = request.substr(line.length() + 1);
 		analizeHeader(request, curr_pos);
-		_requestInfo.body = request.substr(_requestInfo._headerEnd + 4);
-		_requestInfo.filename = findInfo(request, "filename=");
 	}
 	catch (std::exception &error)
 	{
@@ -98,12 +100,10 @@ std::string Request::findType(std::string request)
 void Request::findPort(std::string line)
 {
 	int pos;
-	std::string adress;
 
-	adress = findInfo(line, "Host:");
-	pos = adress.find(":");
+	pos = line.find(":");
 	if (pos == -1)
-		_requestInfo.hostname = adress;
+		_requestInfo.hostname = line;
 }
 
 void Request::bodyLength(void)
@@ -185,13 +185,19 @@ void Request::checkInvalidCharacters(std::string to_check)
 
 void Request::checkServer(std::vector<Server> server)
 {
+	int	check = 0;
+
 	for (int i = server.size() - 1; i >= 0; i--)
 	{
 		Server it = server[i];
-		_serverInfo._rightServer = it;
 		if (std::find(it.server_name.begin(), it.server_name.end(), _requestInfo.hostname) != it.server_name.end())
-			return;
+		{
+			check = 1;
+			_serverInfo._rightServer = it;
+		}
 	}
+	if (check == 0)
+		_serverInfo._rightServer = server[0];
 	lookForLocation(_requestInfo.URI);
 	if (_requestInfo.status != 404)
 		checkOnLocation();
@@ -255,6 +261,10 @@ bool	Request::importantInfo(std::pair <std::string, std::string> value)
 		_requestInfo.contentLength = value.second;
 	else if (value.first == "Content-Type")
 		_requestInfo.contentType = value.second;
+	else if (value.first == "Host")
+		findPort(value.second);
+	else if (value.first == "Cookie")
+		_requestInfo.cookie = value.second;
 	else
 		return (false);
 	return (true);
@@ -279,7 +289,8 @@ void	Request::analizeHeader(std::string header, int curr_pos)
 		if (importantInfo(value) == false)
 			_env.push_back(value);
 		curr_pos += line.length() + 1;
-		header = header.substr(line.length() + 1);
+		if (curr_pos < _requestInfo._headerEnd)
+			header = header.substr(line.length() + 1);
 	}
 }
 
@@ -300,8 +311,9 @@ void Request::printInfoRequest(void)
 	std::cout << "CONTENT TYPE: " << _requestInfo.contentType << std::endl;
 	std::cout << "QUERY: " << _requestInfo.query << std::endl;
 	std::cout << "FILE TO CLIENT: " << _serverInfo.to_client << std::endl;
-	std::cout << "STATUS: " << _requestInfo.status << std::endl << std::endl;
-	// printServers(temp);
+	std::cout << "STATUS: " << _requestInfo.status << std::endl;
+	std::cout << "FILENAME :" << _requestInfo.filename << std::endl;
+	//printServers(temp);
 }
 
 bool checkBody(std::string request)
@@ -334,11 +346,12 @@ std::pair <std::string, std::string> parse(std::string line)
 	while (line[end] != ':' && line[end] != '\r' && line[end] != '\n')
 		end++;
 	value.first.append(line, begin, end - begin);
-	begin = end + 1;
-	while ((line[end] == ' ' || line[end] == ':') && line[end] != '\r' && line[end] != '\n')
+	begin = end;
+	while ((line[begin] == ' ' || line[begin] == ':') && line[begin] != '\r' && line[begin] != '\n')
+		begin++;
+	while (line[end] != '\n' && line[end] != '\r')
 		end++;
-	value.second.append(line, end);
-	std::cout << value.first << " " << value.second << std::endl;
+	value.second.append(line, begin, end - begin);
 	return (value);
 }
 
