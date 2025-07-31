@@ -89,8 +89,7 @@ int Controller::handleRequest(int fd)
 {
 	Connection &curr = _connections[fd];
 
-	Request req(curr.readBuffer);
-	req.checkServer(curr.servers);
+	Request req(curr.readBuffer, curr.servers);
 	req.printInfoRequest();
 	curr.req = req;
 

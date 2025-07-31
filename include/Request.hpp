@@ -45,7 +45,7 @@ class Request
 {
    public:
 	Request(void);
-	Request(std::string request);
+	Request(std::string request, std::vector<Server> server);
 	~Request(void);
 
 	Request &operator=(Request &other);
@@ -65,11 +65,14 @@ class Request
 	void rightFormatLocation(void);
 	void checkInvalidCharacters(std::string to_check);
 	void checkOnLocation(void);
-	void bodyLength(std::string request);
+	void bodyLength(void);
 	void analizeHeader(std::string header, int curr_pos);
 	bool importantInfo(std::pair <std::string, std::string> value, std::string request);
 	std::string	parseContentType(std::string value, std::string line);
 	void	cleanFile(void);
+	void	checkDuplicate(std::string header);
+	void	checkCGI(void);
+	void	checkQuery(void);
 
 
 	requestInfo _requestInfo;
