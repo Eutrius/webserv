@@ -13,7 +13,8 @@ void Response::handleRedirect(serverInfo &server, requestInfo &request)
 	_body = "";
 	generateHeader(request.status, "", server.to_client);
 }
-std::vector<char *> Response::generateCGIEnv(serverInfo &server, requestInfo &request)
+
+void Response::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request)
 {
 	std::vector<std::string> envStrings;
 
@@ -21,59 +22,35 @@ std::vector<char *> Response::generateCGIEnv(serverInfo &server, requestInfo &re
 	if (request.method == POST)
 	{
 		if (!request.contentType.empty())
-		{
 			envStrings.push_back("CONTENT_TYPE=" + request.contentType);
-		}
 		if (!request.contentLength.empty())
-		{
 			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
-		}
-		else
-		{
-			std::ostringstream ss;
-			ss << request.body.length();
-			envStrings.push_back("CONTENT_LENGTH=" + ss.str());
-		}
 	}
 	envStrings.push_back("QUERY_STRING=" + request.query);
 	envStrings.push_back("SCRIPT_NAME=" + server.link);
-	// envStrings.push_back("PATH_INFO=" + );
+	if (!request.cgiPath.empty())
+		envStrings.push_back("PATH_INFO=" + request.cgiPath);
 	envStrings.push_back("SERVER_NAME=" + request.hostname);
-	// envStrings.push_back("SERVER_PORT=" + );
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
-	// envStrings.push_back("REMOVE_ADDR=" + );
 	envStrings.push_back("REQUEST_URI=" + request.URI);
-
-	// if (!request.formatAccepted.empty())
-	// {
-	// 	envStrings.push_back("HTTP_USER_AGENT=");
-	// }
+	// envStrings.push_back("REMOVE_ADDR=" + );
+	// envStrings.push_back("SERVER_PORT=" + );
 
 	if (!request.formatAccepted.empty())
-	{
 		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);
-	}
 
 	if (!request.hostname.empty())
-	{
 		envStrings.push_back("HTTP_HOST=" + request.hostname);
-	}
 
 	if (!request.cookie.empty())
-	{
 		envStrings.push_back("HTTP_COOKIE=" + request.cookie);
-	}
 
-	// TODO: add the rest of header info
+	for (size_t i = 0; i < request._env.size(); i++)
+		envStrings.push_back(normalizeEnvName(request._env[i].first) + request._env[i].second);
 
-	std::vector<char *> envp;
 	for (size_t i = 0; i < envStrings.size(); i++)
-	{
 		envp.push_back(const_cast<char *>(envStrings[i].c_str()));
-	}
 	envp.push_back(NULL);
-
-	return (envp);
 }
 
 int Response::handleCGI(serverInfo &server, requestInfo &request)
@@ -95,7 +72,8 @@ int Response::handleCGI(serverInfo &server, requestInfo &request)
 		return (-1);
 	}
 
-	std::vector<char *> envp = generateCGIEnv(server, request);
+	std::vector<char *> envp;
+	generateCGIEnv(envp, server, request);
 
 	pid_t pid = fork();
 	if (pid == -1)
@@ -125,7 +103,6 @@ int Response::handleCGI(serverInfo &server, requestInfo &request)
 		close(inPipe[0]);
 
 		std::vector<char *> argv;
-
 		std::string scriptPath = server.link;
 		std::string binary;
 
@@ -135,17 +112,11 @@ int Response::handleCGI(serverInfo &server, requestInfo &request)
 			std::string extension = scriptPath.substr(dotPos + 1);
 
 			if (extension == "py")
-			{
 				binary = "/usr/bin/python3";
-			}
 			else if (extension == "php")
-			{
 				binary = "/usr/bin/php";
-			}
 			else if (extension == "sh")
-			{
 				binary = "/bin/sh";
-			}
 		}
 
 		argv.push_back(const_cast<char *>(binary.c_str()));
@@ -590,3 +561,16 @@ bool Response::isDirectory(std::string path)
 	}
 	return (S_ISDIR(st.st_mode));
 }
+
+std::string Response::normalizeEnvName(std::string headerName)
+{
+	std::string env = "HTTP_";
+	for (std::string::const_iterator it = headerName.begin(); it != headerName.end(); ++it)
+	{
+		if (*it == '-')
+			env += '_';
+		else
+			env += std::toupper(static_cast<unsigned char>(*it));
+	}
+	env += "=";
+	return (env);

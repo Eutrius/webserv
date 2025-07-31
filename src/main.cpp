@@ -74,14 +74,14 @@ int main(int argc, char const *argv[])
 					}
 					else if (bytes_read < BUFFER_SIZE && type & CON_CGI)
 					{
-						Connection &curr = controller.getConnection(fd);
-						Connection &target = controller.getConnection(curr.targetFd);
-						Response &res = target.res;
-						res.setBody(curr.readBuffer);
-						res.generateHeader(200, target.req.getServerInfo().link, target.req.getServerInfo().location);
-						target.writeBuffer = res.getCompleteResponse();
-						epoll.modifyFd(curr.targetFd, EPOLLOUT);
-						controller.closeConnection(fd);
+						// Connection &curr = controller.getConnection(fd);
+						// Connection &target = controller.getConnection(curr.targetFd);
+						// Response &res = target.res;
+						// res.setBody(curr.readBuffer);
+						// res.generateHeader(200, target.req.getServerInfo().link,
+						// target.req.getServerInfo().location); target.writeBuffer = res.getCompleteResponse();
+						// epoll.modifyFd(curr.targetFd, EPOLLOUT);
+						// controller.closeConnection(fd);
 					}
 				}
 			}
