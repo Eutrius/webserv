@@ -77,17 +77,7 @@ int main(int argc, char const *argv[])
 						Connection &curr = controller.getConnection(fd);
 						if (checkBody(curr.readBuffer))
 						{
-							Request req(curr.readBuffer);
-							try
-							{
-								std::cout << curr.readBuffer << std::endl;
-								req.checkServer(curr.servers);
-							}
-							catch(const std::exception& e)
-							{
-								std::cerr << e.what() << '\n';
-								continue ;
-							}
+							Request req(curr.readBuffer, curr.servers);
 							if (controller.handleRequest(fd))
 								epoll.modifyFd(fd, EPOLLOUT);
 							else
