@@ -171,8 +171,8 @@ void printServers(const std::vector<Server> &servers)
 		std::cout << "client_max_body_size: " << s.client_max_body_size << "\n";
 
 		std::cout << "cgi_extension: ";
-		for (size_t j = 0; j < s.cgi_extension.size(); ++j)
-			std::cout << s.cgi_extension[j] << " ";
+		for (std::map<std::string, std::string>::const_iterator it = s.cgi_extension.begin(); it != s.cgi_extension.end(); ++it)
+			std::cout << "  [" << it->first << "] => " << it->second << "\t";
 		std::cout << "\n";
 
 		std::cout << "error_page:\n";
@@ -202,8 +202,8 @@ void printServers(const std::vector<Server> &servers)
 			std::cout << "\n";
 
 			std::cout << "    cgi_extension: ";
-			for (size_t j = 0; j < loc.cgi_extension.size(); ++j)
-				std::cout << loc.cgi_extension[j] << " ";
+			for (std::map<std::string, std::string>::const_iterator jj = loc.cgi_extension.begin(); jj != loc.cgi_extension.end(); ++jj)
+				std::cout << "  [" << jj->first << "] => " << jj->second << "\t";
 			std::cout << "\n";
 
 			std::cout << "    error_page:\n";
@@ -292,14 +292,9 @@ void checkUpload_dir(std::vector<std::string> vect, std::string &upload_dir)
 	upload_dir = vect[0];
 }
 
-void checkCgi_extension(std::vector<std::string> vect, std::vector<std::string> &cgi_extension)
+void checkCgi_extension(std::string key, std::map<std::string, std::string> &cgi_extension, std::string path)
 {
-	for (size_t i = 0; i < vect.size(); ++i)
-	{
-		if (vect[i] != "py" && vect[i] != "php")
-			throw std::runtime_error("Unknown cgi_extension, valid only: py php");
-	}
-	cgi_extension = vect;
+	cgi_extension[key] = path;
 }
 
 void checkError_page(std::vector<std::string> vect, std::map<int, std::string> &error_page, int key)
@@ -360,8 +355,8 @@ void validatelocation(locationmap &m, Server &serverx)
 				checkAutoindex(jt->second, serverx.location[it->first].autoindex);
 			else if (jt->first == "upload_dir")
 				checkUpload_dir(jt->second, serverx.location[it->first].upload_dir);
-			else if (jt->first == "cgi_extension")
-				checkCgi_extension(jt->second, serverx.location[it->first].cgi_extension);
+			else if (jt->first == ".py" || jt->first == ".php")
+				checkCgi_extension(jt->first, serverx.location[it->first].cgi_extension, jt->second[0]);
 			else if (jt->first == "client_max_body_size")
 				checkClient_max_body_size(jt->second, serverx.location[it->first].client_max_body_size);
 			else if (jt->first.length() == 3 && isdigit(jt->first[0]) && isdigit(jt->first[1]) && isdigit(jt->first[2]))
@@ -398,7 +393,7 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 	serverx.index = std::vector<std::string>();          // Common default page
 	serverx.upload_dir = "";                             // No upload directory
 	serverx.autoindex = false;                           // Directory listing disabled
-	serverx.cgi_extension = std::vector<std::string>();  // No CGI extensions enabled
+	serverx.cgi_extension = std::map<std::string, std::string>();  // No CGI extensions enabled
 	serverx.methods = 7;                                 // Allowed all methods
 	serverx.client_max_body_size = 1048576;              // 1MB (common default value)
 	serverx.error_page = std::map<int, std::string>();   // No custom error pages
@@ -420,8 +415,8 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 			checkAutoindex(it->second, serverx.autoindex);
 		else if (it->first == "upload_dir")
 			checkUpload_dir(it->second, serverx.upload_dir);
-		else if (it->first == "cgi_extension")
-			checkCgi_extension(it->second, serverx.cgi_extension);
+		else if (it->first == ".py" || it->first == ".php")
+			checkCgi_extension(it->first, serverx.cgi_extension, it->second[0]);
 		else if (it->first == "return")
 			throw std::runtime_error("Return should be inside a location");
 		else if (it->first.length() == 3 && isdigit(it->first[0]) && isdigit(it->first[1]) && isdigit(it->first[2]))
@@ -431,26 +426,6 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 	}
 	if (serverx.upload_dir == "")
 		throw std::runtime_error("Every server needs an upload directory");
-}
-
-void removeLocationInPlace(std::string &input)
-{
-	size_t pos = input.find("location ", 0);
-	size_t start_pos, end_pos;
-
-	while (input.find("location ", pos) != std::string::npos &&
-	       (input.find("location ", pos) < input.find("}", pos) || input.find("}", pos) < input.find(";", pos)))
-	{
-		start_pos = input.find("location ", pos);  // to do: assicurarsi che prima ci sia " ;}"
-		end_pos = input.find_first_not_of(' ', start_pos);
-		end_pos = input.find('{', end_pos);
-		if (input.substr(start_pos, end_pos - start_pos + 1).find(";") == std::string::npos)
-		{
-			end_pos = input.find('}', end_pos);
-			input.erase(start_pos, end_pos - start_pos + 1);
-		}
-		pos = start_pos + 1;
-	}
 }
 
 std::string removeComments(const std::string &input)
@@ -531,7 +506,18 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 		}
 		return;
 	}
-
+	if (tokens[0] == "cgi_extension")
+	{
+		if (tokens.size() != 3)
+			throw std::runtime_error("\"cgi_extension\" directive takes 2 arguments: file extension and interpreter program");
+		if (tokens[1] != ".php" && tokens[1] != ".py")
+			throw std::runtime_error("Unknown cgi_extension: \"" + tokens[1] + "\", valid only: .py .php");
+		if (result.find(tokens[1]) != result.end())
+			throw std::runtime_error(tokens[1] + " extension already set");
+		newValues.push_back(tokens.back());
+		result[tokens[1]] = newValues;
+		return;
+	}
 	std::string key = tokens[0];
 	for (size_t i = 1; i < tokens.size(); ++i)
 		newValues.push_back(tokens[i]);
