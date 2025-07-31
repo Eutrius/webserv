@@ -89,22 +89,22 @@ int Controller::read(int fd)
 {
 	char buffer[BUFFER_SIZE];
 	Connection &curr = _connections[fd];
-	int bytes_read = ::read(fd, buffer, BUFFER_SIZE);
-	if (bytes_read > 0)
+	int bytesRead = ::read(fd, buffer, BUFFER_SIZE);
+	if (bytesRead > 0)
 	{
-		curr.readBuffer.append(buffer, bytes_read);
+		curr.readBuffer.append(buffer, bytesRead);
 		curr.lastActivity = time(NULL);
 	}
-	return (bytes_read);
+	return (bytesRead);
 }
 
 int Controller::write(int fd)
 {
 	Connection &curr = _connections[fd];
-	int bytes_sent = ::write(fd, curr.writeBuffer.c_str() + curr.sent, curr.writeBuffer.length() - curr.sent);
-	if (bytes_sent > 0)
+	int bytesSent = ::write(fd, curr.writeBuffer.c_str() + curr.sent, curr.writeBuffer.length() - curr.sent);
+	if (bytesSent > 0)
 	{
-		curr.sent += bytes_sent;
+		curr.sent += bytesSent;
 		curr.lastActivity = time(NULL);
 	}
 	if (curr.sent >= curr.writeBuffer.length())
@@ -148,7 +148,7 @@ int Controller::handleRequest(int fd)
 	}
 	if (request.isCGI)
 	{
-		int cgiFD = res.handleCGI(server, request, location);
+		int cgiFD = res.handleCGI(server, request);
 		if (cgiFD != -1)
 		{
 			try
