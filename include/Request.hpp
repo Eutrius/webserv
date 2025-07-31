@@ -31,10 +31,14 @@ struct requestInfo
 	std::string body;
 	std::string filename;
 	std::string cookie;
+	std::string boundary;
+	std::string	cgiPath;
+	std::vector<std::pair <std::string, std::string> > _env;
 	int method;
 	int _headerEnd;
 	int status;
 	bool isRedirect;
+	bool isCGI;
 };
 
 class Request
@@ -61,11 +65,13 @@ class Request
 	void rightFormatLocation(void);
 	void checkInvalidCharacters(std::string to_check);
 	void checkOnLocation(void);
-	void bodyLength(void);
+	void bodyLength(std::string request);
 	void analizeHeader(std::string header, int curr_pos);
-	bool importantInfo(std::pair <std::string, std::string> value);
+	bool importantInfo(std::pair <std::string, std::string> value, std::string request);
+	std::string	parseContentType(std::string value, std::string line);
+	void	cleanFile(void);
 
-	std::vector<std::pair <std::string, std::string> > _env;
+
 	requestInfo _requestInfo;
 	serverInfo _serverInfo;
 };
@@ -73,3 +79,4 @@ class Request
 std::string findInfo(std::string request, std::string toFind);
 bool checkBody(std::string request);
 std::pair <std::string, std::string> parse(std::string line);
+std::string	removeQuotes(std::string& str);
