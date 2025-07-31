@@ -19,7 +19,7 @@ class Response
 	void setBody(std::string body);
 	void defaultHtmlBody(int statusCode);
 	void generateHeader(int statusCode, std::string contentType, std::string location);
-	std::vector<char *> generateCGIEnv(serverInfo &server, requestInfo &request);
+	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request);
 	int generateAutoindex(std::string path, std::string uri);
 	int handleFile(std::string path);
 	int handleError(serverInfo &server, requestInfo &request, Location &location);
@@ -28,6 +28,7 @@ class Response
 	int handleCGI(serverInfo &server, requestInfo &request);
 	void handleDelete(serverInfo &server, requestInfo &request);
 	void handleRedirect(serverInfo &server, requestInfo &request);
+	std::string normalizeEnvName(std::string headerName);
 	bool fileExists(std::string path);
 	bool isDirectory(std::string path);
 
