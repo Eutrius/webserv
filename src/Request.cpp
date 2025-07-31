@@ -166,11 +166,18 @@ void Request::analizeRequestLine(std::string requestLine)
 void Request::rightFormatLocation(void)
 {
 	size_t pos;
+	std::string cgi[3] = {".py", ".php", ".sh"};
 
 	if (_requestInfo.URI[0] != '/')
 	{
 		_requestInfo.status = 400;
 		throw std::runtime_error("Bad request: no slash in URI\n");
+	}
+	pos = _requestInfo.URI.find("..");
+	if (pos != std::string::npos)
+	{
+		_requestInfo.status = 400;
+		throw std::runtime_error("Bad request: traversal path in URI\n");
 	}
 	pos = _requestInfo.URI.find("%20");
 	while (pos != std::string::npos)
@@ -185,6 +192,22 @@ void Request::rightFormatLocation(void)
 	{
 		_requestInfo.query = _requestInfo.URI.substr(pos);
 		_requestInfo.URI.erase(pos);
+	}
+	for (int i = 0; i < 3; i++)
+	{
+		pos = _requestInfo.URI.find(cgi[i]);
+		std::cout << cgi[i] << std::endl;
+		if (pos != std::string::npos)
+		{
+			_requestInfo.isCGI = true;
+			pos = _requestInfo.URI.find("/", pos);
+			_requestInfo.cgiPath.append(_requestInfo.URI, pos);
+			_requestInfo.URI.erase(pos);
+			std::cout << _requestInfo.URI << "cgi: " << _requestInfo.cgiPath << std::endl;
+			break ;
+		}
+		else
+			_requestInfo.cgiPath = "";
 	}
 }
 
@@ -326,7 +349,7 @@ void	Request::analizeHeader(std::string header, int curr_pos)
 		line = header.substr(0, pos);
 		value = parse(line);
 		if (importantInfo(value, header) == false)
-			_env.push_back(value);
+			_requestInfo._env.push_back(value);
 		curr_pos += line.length() + 1;
 		if (curr_pos < _requestInfo._headerEnd)
 			header = header.substr(line.length() + 1);
@@ -354,6 +377,7 @@ void Request::printInfoRequest(void)
 	std::cout << "FILENAME: " << _requestInfo.filename << std::endl;
 	std::cout << "BOUNDARY: " << _requestInfo.boundary << std::endl;
 	std::cout << "BODY: " << _requestInfo.body << std::endl;
+	std::cout << "CGI PATH: " << _requestInfo.cgiPath << std::endl;
 	//printServers(temp);
 }
 

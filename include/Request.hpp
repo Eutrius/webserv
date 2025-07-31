@@ -32,10 +32,13 @@ struct requestInfo
 	std::string filename;
 	std::string cookie;
 	std::string boundary;
+	std::string	cgiPath;
+	std::vector<std::pair <std::string, std::string> > _env;
 	int method;
 	int _headerEnd;
 	int status;
 	bool isRedirect;
+	bool isCGI;
 };
 
 class Request
@@ -68,7 +71,7 @@ class Request
 	std::string	parseContentType(std::string value, std::string line);
 	void	cleanFile(void);
 
-	std::vector<std::pair <std::string, std::string> > _env;
+
 	requestInfo _requestInfo;
 	serverInfo _serverInfo;
 };

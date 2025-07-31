@@ -80,6 +80,7 @@ int main(int argc, char const *argv[])
 							Request req(curr.readBuffer);
 							try
 							{
+								std::cout << curr.readBuffer << std::endl;
 								req.checkServer(curr.servers);
 							}
 							catch(const std::exception& e)
