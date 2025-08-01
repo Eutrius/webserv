@@ -62,13 +62,13 @@ class Request
    private:
 	std::string findType(std::string request);
 	void findPort(std::string hostname);
-	void analizeRequestLine(std::string requestLine);
+	void analyzeRequestLine(std::string requestLine);
 	void lookForLocation(std::string location);
 	void rightFormatLocation(void);
 	void checkInvalidCharacters(std::string to_check);
 	void checkOnLocation(void);
 	void bodyLength(void);
-	void analizeHeader(std::string header, int curr_pos);
+	void analyzeHeader(std::string header, int curr_pos);
 	bool importantInfo(std::pair<std::string, std::string> value, std::string request);
 	std::string parseContentType(std::string value, std::string line);
 	void cleanFile(void);

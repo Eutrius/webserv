@@ -1,4 +1,5 @@
 #include <csignal>
+#include <cstdlib>
 #include "Controller.hpp"
 #include "Epoll.hpp"
 #include "Request.hpp"
@@ -42,20 +43,29 @@ int main(int argc, char const *argv[])
 			uint32_t eventFlags = events[i].events;
 
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
-				controller.closeConnection(fd);
-			else if (eventFlags & EPOLLIN)
 			{
-				con_type type = controller.getConnectionTypeByFd(fd);
+				controller.closeConnection(fd);
+				continue;
+			}
 
+			Connection &curr = controller.getConnection(fd);
+			con_type type = curr.type;
+
+			if (eventFlags & EPOLLIN)
+			{
 				if (type & CON_SERVER)
-					controller.newClientConnection(fd);
-				else
 				{
-					int bytes_read = controller.read(fd);
-					if (bytes_read == -1)
-						continue;
+					controller.newClientConnection(fd);
+					continue;
+				}
 
-					if (type & CON_CLIENT)
+				int bytesRead = controller.read(fd);
+				if (bytesRead == -1)
+					continue;
+
+				if (type & CON_CLIENT)
+				{
+					if (checkBody(curr.readBuffer))
 					{
 						Connection &curr = controller.getConnection(fd);
 						if (checkBody(curr.readBuffer))
@@ -63,8 +73,7 @@ int main(int argc, char const *argv[])
 							Request req(curr.readBuffer, curr.servers);
 							if (controller.handleRequest(fd))
 								epoll.modifyFd(fd, EPOLLOUT);
-							else
-								epoll.modifyFd(fd, 0);
+
 							if (req.getInfo().newClient == true)
 								cookie.createCookie();
 							else
@@ -72,22 +81,19 @@ int main(int argc, char const *argv[])
 							cookie.printClients();
 						}
 					}
-					else if (bytes_read < BUFFER_SIZE && type & CON_CGI)
-					{
-						// Connection &curr = controller.getConnection(fd);
-						// Connection &target = controller.getConnection(curr.targetFd);
-						// Response &res = target.res;
-						// res.setBody(curr.readBuffer);
-						// res.generateHeader(200, target.req.getServerInfo().link,
-						// target.req.getServerInfo().location); target.writeBuffer = res.getCompleteResponse();
-						// epoll.modifyFd(curr.targetFd, EPOLLOUT);
-						// controller.closeConnection(fd);
-					}
 				}
+				else if (type & CON_CGI && bytesRead == 0)
+					controller.handleCGIInput(fd);
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
-				if (controller.write(fd))
+				int bytesSent = controller.write(fd);
+				if (type & CON_CLIENT)
+				{
+					if (curr.sent >= curr.writeBuffer.length())
+						controller.closeConnection(fd);
+				}
+				else if (type & CON_CGI && bytesSent == 0)
 					controller.closeConnection(fd);
 			}
 		}
