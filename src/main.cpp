@@ -11,6 +11,7 @@ static void handleSignal(int signal);
 int main(int argc, char const *argv[])
 {
 	t_serversMap serversMap;
+	Cookie		cookie;
 	if (!parseConfig(argc, argv, serversMap))
 		return (1);
 
@@ -82,6 +83,11 @@ int main(int argc, char const *argv[])
 								epoll.modifyFd(fd, EPOLLOUT);
 							else
 								epoll.modifyFd(fd, 0);
+							if (req.getInfo().newClient == true)
+								cookie.createCookie();
+							else
+								cookie.analizeCookie(req.getInfo().cookie);
+							cookie.printClients();
 						}
 					}
 					else if (bytes_read < BUFFER_SIZE && type & (CON_CGI | CON_FILE))

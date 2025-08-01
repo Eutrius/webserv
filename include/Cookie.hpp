@@ -9,11 +9,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstdlib>
+#include "Request.hpp"
 
 struct Client
 {
-	int id;
-	std::vector<std::string> info;
+	std::string id;
+	std::string info;
 };
 
 class	Cookie
@@ -27,8 +29,12 @@ class	Cookie
 		std::vector<Client> getClients(void) const;
 		void	createCookie(void);
 		void	analizeCookie(std::string line);
+		void	printClients(void);
 
 	private:
+		int		findId(std::string line);
+		void	createCookie(std::string id);
+		std::string generateId(void);
+
 		std::vector<Client>	clients;
-		static int id;
 };

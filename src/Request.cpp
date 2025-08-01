@@ -25,6 +25,10 @@ Request::Request(std::string request, std::vector<Server> server)
 		analizeHeader(request.substr(0, _requestInfo._headerEnd), curr_pos);
 		cleanFile();
 		checkServer(server);
+		if (_requestInfo.cookie.empty())
+			_requestInfo.newClient = true;
+		else
+			_requestInfo.newClient = false;
 	}
 	catch (std::exception &error)
 	{
