@@ -23,10 +23,10 @@ Request::Request(std::string request, std::vector<Server> server)
 			_requestInfo.status = 400;
 			throw std::runtime_error("Bad request: No end of file\n");
 		}
-		analizeRequestLine(line);
+		analyzeRequestLine(line);
 		curr_pos += line.length() + 1;
 		request = request.substr(curr_pos);
-		analizeHeader(request.substr(0, _requestInfo._headerEnd), curr_pos);
+		analyzeHeader(request.substr(0, _requestInfo._headerEnd), curr_pos);
 		cleanFile();
 		checkServer(server);
 	}
@@ -70,7 +70,7 @@ requestInfo &Request::getInfo(void)
 //		REQUEST LINE
 //-----------------------
 
-void Request::analizeRequestLine(std::string requestLine)
+void Request::analyzeRequestLine(std::string requestLine)
 {
 	std::string protocol;
 	std::string check;
@@ -183,7 +183,7 @@ void Request::checkCGI(void)
 //		HEADER
 //-------------------
 
-void Request::analizeHeader(std::string header, int curr_pos)
+void Request::analyzeHeader(std::string header, int curr_pos)
 {
 	std::string line;
 	int pos;

@@ -43,15 +43,22 @@ class Controller
 
 	int initServers(std::vector<Socket> &sockets);
 	void newClientConnection(int fd);
-	void newCGIConnection(int fd, int targetFd);
+	void newCGIConnection(int fd, int targetFd, int event);
 	void newServerConnection(Socket socket);
 	void closeConnection(int fd);
+	void modifyConnection(int fd, int event);
 	int handleRequest(int fd);
+	void handleCGIInput(int fd);
 	int read(int fd);
 	int write(int fd);
+	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request);
+	int handleCGI(serverInfo &server, requestInfo &request);
+	std::string normalizeEnvName(std::string headerName);
 
 	Connection &getConnection(int fd);
 	con_type getConnectionTypeByFd(int fd);
+	Response &getResponseByFd(int fd);
+	Request &getRequestByFd(int fd);
 
    private:
 	std::map<int, Connection> _connections;
