@@ -40,9 +40,38 @@ void	Cookie::analizeCookie(std::string line)
 {
 	std::pair <std::string, std::string> value;
 	int	client;
+	// int pos;
+	// int start;
+	// int	end;
+	// int i = 1;
 
 	client = findId(line);
 	clients[client].info = line;
+	// pos = line.find(";");
+	// while (pos != -1)
+	// {
+	// 	line = line.substr(pos);
+	// 	std::cout << line << std::endl;
+	// 	start = line.find("=");
+	// 	if (start != -1)
+	// 	{
+	// 		while (line[start - i] != ' ')
+	// 		{
+	// 			std::cout << line[start - i] << std::endl;
+	// 			value.first = line[start - i] + value.first;
+	// 			i++;
+	// 		}
+	// 		pos = line.find(";", start);
+	// 		if (pos == -1)
+	// 			end = line.find("\n", pos);
+	// 		else
+	// 			end = pos;
+	// 		value.second.append(line, start + 1, end - start - 2);
+	// 		clients[client].info.push_back(value);
+	// 	}
+	// 	else
+	// 		pos = -1;
+	// }
 }
 
 int		Cookie::findId(std::string line)
@@ -92,5 +121,7 @@ void	Cookie::printClients(void)
 	{
 		std::cout << clients[i].id << std::endl;
 		std::cout << clients[i].info << std::endl;
+		// for (size_t x = 0; x < clients[i].info.size(); x++)
+		// 	std::cout << clients[i].info[x].first << ": " << clients[i].info[x].second << std::endl;
 	}
 }
