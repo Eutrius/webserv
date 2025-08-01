@@ -15,7 +15,7 @@ struct Location
 	int methods;
 	std::pair<int, std::string> return_path;  // da 0 a 999
 	std::string upload_dir;
-	std::vector<std::string> cgi_extension;
+	std::map<std::string, std::string> cgi_extension;
 	std::string root;
 	std::vector<std::string> index;
 	int client_max_body_size;
@@ -30,7 +30,7 @@ struct Server
 	std::string root;
 	std::string upload_dir;
 	bool autoindex;
-	std::vector<std::string> cgi_extension;
+	std::map<std::string, std::string> cgi_extension;
 	int methods;
 	int client_max_body_size;
 	std::map<int, std::string> error_page;  // must be between 300 and 599
@@ -40,8 +40,8 @@ struct Server
 enum Methods
 {
 	GET = 1,
-	POST = 1 << 1,
-	DELETE = 1 << 2,
+	POST = 2,
+	DELETE = 4,
 };
 
 typedef std::pair<int, int> t_host;
