@@ -43,7 +43,6 @@ void Controller::newServerConnection(Socket socket)
 	Connection conn;
 	conn.type = CON_SERVER;
 	conn.socket = socket;
-	conn.servers = socket.getServers();
 	_connections[socket.getFd()] = conn;
 }
 
@@ -69,8 +68,8 @@ void Controller::newClientConnection(int fd)
 			Connection conn;
 			conn.type = CON_CLIENT;
 			conn.sent = 0;
+			conn.socket = server.socket;
 			conn.lastActivity = std::time(NULL);
-			conn.servers = server.servers;
 			_connections[clientFd] = conn;
 		}
 		catch (std::exception &e)
@@ -150,56 +149,11 @@ Request &Controller::getRequestByFd(int fd)
 	return (_connections[fd].req);
 }
 
-void Controller::handleCGIOutput(int fd)
-{
-	Connection &curr = _connections[fd];
-	Connection &target = getConnection(curr.targetFd);
-	Response &res = getResponseByFd(curr.targetFd);
-	Request &req = getRequestByFd(curr.targetFd);
-
-	std::string cgiOutput = curr.readBuffer;
-
-	size_t headerEndPos = cgiOutput.find("\r\n\r\n");
-	if (headerEndPos == std::string::npos)
-	{
-		headerEndPos = cgiOutput.find("\n\n");
-		if (headerEndPos == std::string::npos)
-		{
-			res.generateHeader(500, req.getServerInfo().link, req.getServerInfo().location);
-			target.writeBuffer = res.getCompleteResponse();
-			modifyConnection(curr.targetFd, EPOLLOUT);
-			closeConnection(fd);
-			return;
-		}
-		headerEndPos += 2;
-	}
-	else
-		headerEndPos += 4;
-
-	std::string header = cgiOutput.substr(0, headerEndPos - (cgiOutput.find("\r\n\r\n") != std::string::npos ? 4 : 2));
-	std::string body = cgiOutput.substr(headerEndPos);
-
-	std::string contentType = findInfo(header, "Content-Type");
-	if (contentType.empty())
-		contentType = "text/html";
-
-	std::string status = findInfo(header, "Status");
-	int statusCode = status.empty() ? 200 : std::atoi(status.c_str());
-	std::string additionalHeaders = extractAdditionalHeaders(header);
-
-	res.setBody(body);
-	res.generateHeader(statusCode, contentType, req.getServerInfo().location);
-	res.appendHeader(additionalHeaders);
-	target.writeBuffer = res.getCompleteResponse();
-	modifyConnection(curr.targetFd, EPOLLOUT);
-	closeConnection(fd);
-}
-
 int Controller::handleRequest(int fd)
 {
 	Connection &curr = _connections[fd];
 
-	Request req(curr.readBuffer, curr.servers);
+	Request req(curr.readBuffer, curr.socket.getServers());
 	req.printInfoRequest();
 	curr.req = req;
 
@@ -220,7 +174,7 @@ int Controller::handleRequest(int fd)
 	}
 	if (request.isCGI)
 	{
-		int outFD = handleCGI(server, request);
+		int outFD = handleCGI(server, request, curr.socket.getHost());
 		if (outFD)
 		{
 			try
@@ -265,7 +219,7 @@ int Controller::handleRequest(int fd)
 	return (1);
 }
 
-int Controller::handleCGI(serverInfo &server, requestInfo &request)
+int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 {
 	int outPipe[2];
 	int inPipe[2];
@@ -285,7 +239,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 	}
 
 	std::vector<char *> envp;
-	generateCGIEnv(envp, server, request);
+	generateCGIEnv(envp, server, request, host);
 
 	pid_t pid = fork();
 	if (pid == -1)
@@ -361,6 +315,51 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 	}
 }
 
+void Controller::handleCGIOutput(int fd)
+{
+	Connection &curr = _connections[fd];
+	Connection &target = getConnection(curr.targetFd);
+	Response &res = getResponseByFd(curr.targetFd);
+	Request &req = getRequestByFd(curr.targetFd);
+
+	std::string cgiOutput = curr.readBuffer;
+
+	size_t headerEndPos = cgiOutput.find("\r\n\r\n");
+	if (headerEndPos == std::string::npos)
+	{
+		headerEndPos = cgiOutput.find("\n\n");
+		if (headerEndPos == std::string::npos)
+		{
+			res.generateHeader(500, req.getServerInfo().link, req.getServerInfo().location);
+			target.writeBuffer = res.getCompleteResponse();
+			modifyConnection(curr.targetFd, EPOLLOUT);
+			closeConnection(fd);
+			return;
+		}
+		headerEndPos += 2;
+	}
+	else
+		headerEndPos += 4;
+
+	std::string header = cgiOutput.substr(0, headerEndPos - (cgiOutput.find("\r\n\r\n") != std::string::npos ? 4 : 2));
+	std::string body = cgiOutput.substr(headerEndPos);
+
+	std::string contentType = findInfo(header, "Content-Type");
+	if (contentType.empty())
+		contentType = "text/html";
+
+	std::string status = findInfo(header, "Status");
+	int statusCode = status.empty() ? 200 : std::atoi(status.c_str());
+	std::string additionalHeaders = extractAdditionalHeaders(header);
+
+	res.setBody(body);
+	res.generateHeader(statusCode, contentType, req.getServerInfo().location);
+	res.appendHeader(additionalHeaders);
+	target.writeBuffer = res.getCompleteResponse();
+	modifyConnection(curr.targetFd, EPOLLOUT);
+	closeConnection(fd);
+}
+
 std::string Controller::normalizeEnvName(std::string headerName)
 {
 	std::string env = "HTTP_";
@@ -375,7 +374,7 @@ std::string Controller::normalizeEnvName(std::string headerName)
 	return (env);
 }
 
-void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request)
+void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host)
 {
 	std::vector<std::string> envStrings;
 
@@ -394,8 +393,11 @@ void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, re
 	envStrings.push_back("SERVER_NAME=" + request.hostname);
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
 	envStrings.push_back("REQUEST_URI=" + request.URI);
-	// envStrings.push_back("REMOVE_ADDR=" + );
-	// envStrings.push_back("SERVER_PORT=" + );
+	envStrings.push_back("REMOVE_ADDR=" + itoaIP(host.first));
+
+	std::stringstream port;
+	port << host.second;
+	envStrings.push_back("SERVER_PORT=" + port.str());
 
 	if (!request.formatAccepted.empty())
 		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);
@@ -440,4 +442,11 @@ std::string Controller::extractAdditionalHeaders(std::string header)
 		headers += line + "\n";
 	}
 	return (headers);
+}
+
+std::string Controller::itoaIP(int ip)
+{
+	std::stringstream ipStr;
+	ipStr << ((ip >> 24) & 0xFF) << '.' << ((ip >> 16) & 0xFF) << '.' << ((ip >> 8) & 0xFF) << '.' << (ip & 0xFF);
+	return (ipStr.str());
 }

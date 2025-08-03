@@ -66,19 +66,15 @@ int main(int argc, char const *argv[])
 				{
 					if (checkBody(curr.readBuffer))
 					{
-						Connection &curr = controller.getConnection(fd);
-						if (checkBody(curr.readBuffer))
-						{
-							Request req(curr.readBuffer, curr.servers);
-							if (controller.handleRequest(fd))
-								epoll.modifyFd(fd, EPOLLOUT);
+						Request req(curr.readBuffer, curr.socket.getServers());
+						if (controller.handleRequest(fd))
+							controller.modifyConnection(fd, EPOLLOUT);
 
-							if (req.getInfo().newClient == true)
-								cookie.createCookie();
-							else
-								cookie.analizeCookie(req.getInfo().cookie);
-							cookie.printClients();
-						}
+						if (req.getInfo().newClient == true)
+							cookie.createCookie();
+						else
+							cookie.analizeCookie(req.getInfo().cookie);
+						cookie.printClients();
 					}
 				}
 				else if (type & CON_CGI && bytesRead == 0)

@@ -17,6 +17,7 @@ class Socket
 	Socket &operator=(const Socket &other);
 
 	int getFd(void) const;
+	t_host getHost(void) const;
 	std::vector<Server> getServers(void) const;
 
 	void init(t_host host, std::vector<Server> servers);
@@ -26,5 +27,6 @@ class Socket
 
    private:
 	int _fd;
+	t_host _host;
 	std::vector<Server> _servers;
 };

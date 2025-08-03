@@ -48,6 +48,7 @@ void Socket::init(t_host host, std::vector<Server> servers)
 	if (listen(_fd, SOMAXCONN) < 0)
 		throw std::runtime_error("Socket: a socket failed to listen");
 
+	_host = host;
 	_servers = servers;
 }
 
@@ -59,6 +60,11 @@ int Socket::getFd(void) const
 std::vector<Server> Socket::getServers(void) const
 {
 	return (_servers);
+}
+
+t_host Socket::getHost(void) const
+{
+	return (_host);
 }
 
 int Socket::accept(void)

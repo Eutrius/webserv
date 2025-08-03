@@ -28,7 +28,6 @@ struct Connection
 	Request req;
 	Response res;
 	Socket socket;
-	std::vector<Server> servers;
 	con_type type;
 	std::string readBuffer;
 	std::string writeBuffer;
@@ -57,14 +56,15 @@ class Controller
 	void checkTimeouts(void);
 
 	int handleRequest(int fd);
-	int handleCGI(serverInfo &server, requestInfo &request);
+	int handleCGI(serverInfo &server, requestInfo &request, t_host host);
 	void handleCGIOutput(int fd);
 	int read(int fd);
 	int write(int fd);
 
 	std::string extractAdditionalHeaders(std::string header);
-	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request);
+	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host);
 	std::string normalizeEnvName(std::string headerName);
+	std::string itoaIP(int ip);
 
    private:
 	std::map<int, Connection> _connections;
