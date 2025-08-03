@@ -50,7 +50,6 @@ int main(int argc, char const *argv[])
 
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;
-
 			if (eventFlags & EPOLLIN)
 			{
 				if (type & CON_SERVER)
@@ -83,7 +82,7 @@ int main(int argc, char const *argv[])
 					}
 				}
 				else if (type & CON_CGI && bytesRead == 0)
-					controller.handleCGIInput(fd);
+					controller.handleCGIOutput(fd);
 			}
 			else if (eventFlags & EPOLLOUT)
 			{

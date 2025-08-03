@@ -1,4 +1,5 @@
 #include "Response.hpp"
+#include <ctime>
 
 Response::Response(void)
 {
@@ -26,7 +27,7 @@ int Response::handleFile(std::string path)
 	return (0);
 }
 
-int Response::handleError(serverInfo &server, requestInfo &request, Location &location)
+void Response::handleError(serverInfo &server, requestInfo &request, Location &location)
 {
 	if (!location.error_page[request.status].empty())
 	{
@@ -35,10 +36,11 @@ int Response::handleError(serverInfo &server, requestInfo &request, Location &lo
 		else
 		{
 			generateHeader(request.status, getMimeType(server.link), server.location);
-			return (1);
+			return;
 		}
 	}
-	return (0);
+	defaultHtmlBody(request.status);
+	return;
 }
 
 int Response::handleGet(serverInfo &server, requestInfo &request, Location &location)
@@ -151,13 +153,15 @@ void Response::handleDelete(serverInfo &server, requestInfo &request)
 
 std::string Response::getCompleteResponse(void)
 {
-	return (_header + _body);
+	return (_header + "\r\n" + _body);
 }
 
 void Response::generateHeader(int statusCode, std::string contentType, std::string location)
 {
 	std::ostringstream header;
 	header << "HTTP/1.1 " << statusCode << " " << getStatusMessage(statusCode) << "\r\n";
+	header << "Server: Ngin42/1.0" << "\r\n";
+	header << "Date: " << generateDate() << "\r\n";
 	header << "Content-Length: " << _body.size() << "\r\n";
 
 	if (!contentType.empty())
@@ -167,8 +171,6 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 		header << "Location: " << location << "\r\n";
 
 	header << "Connection: close\r\n";
-	header << "\r\n";
-
 	_header = header.str();
 }
 
@@ -183,35 +185,36 @@ int Response::generateAutoindex(std::string path, std::string uri)
 	html << "<h1>Directory listing for " << uri << "</h1>\n<ul>\n";
 
 	if (uri != "/")
-	{
 		html << "<li><a href=\"../\">../</a></li>\n";
-	}
 
 	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL)
 	{
 		std::string name = entry->d_name;
 		if (name == "." || name == "..")
-		{
 			continue;
-		}
 
 		std::string fullPath = path + "/" + name;
 		if (isDirectory(fullPath))
-		{
 			html << "<li><a href=\"" << name << "/\">" << name << "/</a></li>\n";
-		}
 		else
-		{
 			html << "<li><a href=\"" << name << "\">" << name << "</a></li>\n";
-		}
 	}
 
 	html << "</ul>\n</body>\n</html>";
 	closedir(dir);
-
 	_body = html.str();
 	return (200);
+}
+
+std::string Response::generateDate(void)
+{
+	char buffer[100];
+	time_t now = std::time(NULL);
+	struct tm *gmt = std::gmtime(&now);
+	if (std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt) == 0)
+		return ("");
+	return (std::string(buffer));
 }
 
 void Response::defaultHtmlBody(int statusCode)
@@ -231,9 +234,15 @@ void Response::defaultHtmlBody(int statusCode)
 	_body = body.str();
 	generateHeader(statusCode, "text/html", "");
 }
+
 void Response::setBody(std::string body)
 {
 	_body = body;
+}
+
+void Response::appendHeader(std::string addtionalHeader)
+{
+	_header += addtionalHeader;
 }
 
 std::string Response::getMimeType(std::string filename)

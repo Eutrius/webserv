@@ -1,4 +1,5 @@
 #include "Controller.hpp"
+#include "Request.hpp"
 
 Controller::Controller(Epoll &epoll) : _epoll(epoll)
 {
@@ -39,20 +40,21 @@ int Controller::initServers(std::vector<Socket> &sockets)
 
 void Controller::newServerConnection(Socket socket)
 {
-	Connection curr;
-	curr.type = CON_SERVER;
-	curr.socket = socket;
-	curr.servers = socket.getServers();
-	_connections[socket.getFd()] = curr;
+	Connection conn;
+	conn.type = CON_SERVER;
+	conn.socket = socket;
+	conn.servers = socket.getServers();
+	_connections[socket.getFd()] = conn;
 }
 
 void Controller::newCGIConnection(int fd, int targetFd, int event)
 {
 	_epoll.addFd(fd, event);
-	Connection curr;
-	curr.type = CON_CGI;
-	curr.targetFd = targetFd;
-	_connections[fd] = curr;
+	Connection conn;
+	conn.type = CON_CGI;
+	conn.lastActivity = std::time(NULL);
+	conn.targetFd = targetFd;
+	_connections[fd] = conn;
 }
 
 void Controller::newClientConnection(int fd)
@@ -67,8 +69,7 @@ void Controller::newClientConnection(int fd)
 			Connection conn;
 			conn.type = CON_CLIENT;
 			conn.sent = 0;
-			conn.isWaiting = false;
-			conn.lastActivity = time(NULL);
+			conn.lastActivity = std::time(NULL);
 			conn.servers = server.servers;
 			_connections[clientFd] = conn;
 		}
@@ -99,6 +100,10 @@ void Controller::modifyConnection(int fd, int event)
 	}
 }
 
+void Controller::checkTimeouts(void)
+{
+}
+
 int Controller::read(int fd)
 {
 	char buffer[BUFFER_SIZE];
@@ -107,7 +112,7 @@ int Controller::read(int fd)
 	if (bytesRead > 0)
 	{
 		curr.readBuffer.append(buffer, bytesRead);
-		curr.lastActivity = time(NULL);
+		curr.lastActivity = std::time(NULL);
 	}
 	return (bytesRead);
 }
@@ -119,7 +124,7 @@ int Controller::write(int fd)
 	if (bytesSent > 0)
 	{
 		curr.sent += bytesSent;
-		curr.lastActivity = time(NULL);
+		curr.lastActivity = std::time(NULL);
 	}
 
 	return (bytesSent);
@@ -145,15 +150,46 @@ Request &Controller::getRequestByFd(int fd)
 	return (_connections[fd].req);
 }
 
-void Controller::handleCGIInput(int fd)
+void Controller::handleCGIOutput(int fd)
 {
 	Connection &curr = _connections[fd];
 	Connection &target = getConnection(curr.targetFd);
 	Response &res = getResponseByFd(curr.targetFd);
 	Request &req = getRequestByFd(curr.targetFd);
 
-	res.setBody(curr.readBuffer);
-	res.generateHeader(200, req.getServerInfo().link, req.getServerInfo().location);
+	std::string cgiOutput = curr.readBuffer;
+
+	size_t headerEndPos = cgiOutput.find("\r\n\r\n");
+	if (headerEndPos == std::string::npos)
+	{
+		headerEndPos = cgiOutput.find("\n\n");
+		if (headerEndPos == std::string::npos)
+		{
+			res.generateHeader(500, req.getServerInfo().link, req.getServerInfo().location);
+			target.writeBuffer = res.getCompleteResponse();
+			modifyConnection(curr.targetFd, EPOLLOUT);
+			closeConnection(fd);
+			return;
+		}
+		headerEndPos += 2;
+	}
+	else
+		headerEndPos += 4;
+
+	std::string header = cgiOutput.substr(0, headerEndPos - (cgiOutput.find("\r\n\r\n") != std::string::npos ? 4 : 2));
+	std::string body = cgiOutput.substr(headerEndPos);
+
+	std::string contentType = findInfo(header, "Content-Type");
+	if (contentType.empty())
+		contentType = "text/html";
+
+	std::string status = findInfo(header, "Status");
+	int statusCode = status.empty() ? 200 : std::atoi(status.c_str());
+	std::string additionalHeaders = extractAdditionalHeaders(header);
+
+	res.setBody(body);
+	res.generateHeader(statusCode, contentType, req.getServerInfo().location);
+	res.appendHeader(additionalHeaders);
 	target.writeBuffer = res.getCompleteResponse();
 	modifyConnection(curr.targetFd, EPOLLOUT);
 	closeConnection(fd);
@@ -184,19 +220,22 @@ int Controller::handleRequest(int fd)
 	}
 	if (request.isCGI)
 	{
-		int cgiFD = handleCGI(server, request);
-		try
+		int outFD = handleCGI(server, request);
+		if (outFD)
 		{
-			newCGIConnection(cgiFD, fd, EPOLLIN);
-			_epoll.modifyFd(fd, 0);
-			curr.res = res;
-			return (0);
-		}
-		catch (std::exception &e)
-		{
-			request.status = 500;
-			closeConnection(cgiFD);
-			std::cerr << e.what() << std::endl;
+			try
+			{
+				newCGIConnection(outFD, fd, EPOLLOUT);
+				_epoll.modifyFd(fd, 0);
+				curr.res = res;
+				return (0);
+			}
+			catch (std::exception &e)
+			{
+				close(outFD);
+				request.status = 500;
+				std::cout << e.what() << std::endl;
+			}
 		}
 	}
 	else if (request.status == 200)
@@ -221,54 +260,9 @@ int Controller::handleRequest(int fd)
 			res.handleDelete(server, request);
 	}
 
-	if (res.handleError(server, request, location))
-	{
-		curr.writeBuffer = res.getCompleteResponse();
-		return (1);
-	}
-
-	res.defaultHtmlBody(request.status);
+	res.handleError(server, request, location);
 	curr.writeBuffer = res.getCompleteResponse();
 	return (1);
-}
-
-void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request)
-{
-	std::vector<std::string> envStrings;
-
-	envStrings.push_back(std::string("REQUEST_METHOD=") + (request.method == GET ? "GET" : "POST"));
-	if (request.method == POST)
-	{
-		if (!request.contentType.empty())
-			envStrings.push_back("CONTENT_TYPE=" + request.contentType);
-		if (!request.contentLength.empty())
-			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
-	}
-	envStrings.push_back("QUERY_STRING=" + request.query);
-	envStrings.push_back("SCRIPT_NAME=" + server.link);
-	if (!request.cgiPath.empty())
-		envStrings.push_back("PATH_INFO=" + request.cgiPath);
-	envStrings.push_back("SERVER_NAME=" + request.hostname);
-	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
-	envStrings.push_back("REQUEST_URI=" + request.URI);
-	// envStrings.push_back("REMOVE_ADDR=" + );
-	// envStrings.push_back("SERVER_PORT=" + );
-
-	if (!request.formatAccepted.empty())
-		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);
-
-	if (!request.hostname.empty())
-		envStrings.push_back("HTTP_HOST=" + request.hostname);
-
-	if (!request.cookie.empty())
-		envStrings.push_back("HTTP_COOKIE=" + request.cookie);
-
-	for (size_t i = 0; i < request._env.size(); i++)
-		envStrings.push_back(normalizeEnvName(request._env[i].first) + request._env[i].second);
-
-	for (size_t i = 0; i < envStrings.size(); i++)
-		envp.push_back(const_cast<char *>(envStrings[i].c_str()));
-	envp.push_back(NULL);
 }
 
 int Controller::handleCGI(serverInfo &server, requestInfo &request)
@@ -279,7 +273,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 	if (pipe(outPipe) == -1)
 	{
 		request.status = 500;
-		return (-1);
+		return (0);
 	}
 
 	if (pipe(inPipe) == -1)
@@ -287,7 +281,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 		close(outPipe[0]);
 		close(outPipe[1]);
 		request.status = 500;
-		return (-1);
+		return (0);
 	}
 
 	std::vector<char *> envp;
@@ -301,7 +295,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 		close(inPipe[0]);
 		close(inPipe[1]);
 		request.status = 500;
-		return (-1);
+		return (0);
 	}
 
 	if (pid == 0)
@@ -346,16 +340,23 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request)
 
 		if (request.method == POST && !request.body.empty())
 		{
-			ssize_t bytesSent = ::write(inPipe[1], request.body.c_str(), request.body.length());
-			if (bytesSent == -1)
+			try
 			{
-				close(outPipe[0]);
+				newCGIConnection(inPipe[1], 0, EPOLLOUT);
+				Connection &curr = getConnection(inPipe[1]);
+				curr.sent = 0;
+				curr.writeBuffer = request.body;
+			}
+			catch (std::exception &e)
+			{
 				close(inPipe[1]);
-				request.status = 500;
-				return (-1);
+				std::cout << e.what() << std::endl;
 			}
 		}
-		close(inPipe[1]);
+		else
+			close(inPipe[1]);
+
+		_cgiConnections[pid] = std::time(NULL);
 		return (outPipe[0]);
 	}
 }
@@ -372,4 +373,71 @@ std::string Controller::normalizeEnvName(std::string headerName)
 	}
 	env += "=";
 	return (env);
+}
+
+void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request)
+{
+	std::vector<std::string> envStrings;
+
+	envStrings.push_back(std::string("REQUEST_METHOD=") + (request.method == GET ? "GET" : "POST"));
+	if (request.method == POST)
+	{
+		if (!request.contentType.empty())
+			envStrings.push_back("CONTENT_TYPE=" + request.contentType);
+		if (!request.contentLength.empty())
+			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
+	}
+	envStrings.push_back("QUERY_STRING=" + request.query);
+	envStrings.push_back("SCRIPT_NAME=" + server.link);
+	if (!request.cgiPath.empty())
+		envStrings.push_back("PATH_INFO=" + request.cgiPath);
+	envStrings.push_back("SERVER_NAME=" + request.hostname);
+	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
+	envStrings.push_back("REQUEST_URI=" + request.URI);
+	// envStrings.push_back("REMOVE_ADDR=" + );
+	// envStrings.push_back("SERVER_PORT=" + );
+
+	if (!request.formatAccepted.empty())
+		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);
+
+	if (!request.hostname.empty())
+		envStrings.push_back("HTTP_HOST=" + request.hostname);
+
+	if (!request.cookie.empty())
+		envStrings.push_back("HTTP_COOKIE=" + request.cookie);
+
+	for (size_t i = 0; i < request._env.size(); i++)
+		envStrings.push_back(normalizeEnvName(request._env[i].first) + request._env[i].second);
+
+	for (size_t i = 0; i < envStrings.size(); i++)
+		envp.push_back(const_cast<char *>(envStrings[i].c_str()));
+	envp.push_back(NULL);
+}
+
+std::string Controller::extractAdditionalHeaders(std::string header)
+{
+	std::istringstream headerStream(header);
+	std::string headers;
+	std::string line;
+
+	while (std::getline(headerStream, line))
+	{
+		if (line.empty())
+			continue;
+
+		if (line[line.size() - 1] != '\r')
+			line += "\r";
+
+		if (line.find("Status:") == 0)
+			continue;
+
+		if (line.find("Content-Type:") == 0)
+			continue;
+
+		if (line.find("Content-Length:") == 0)
+			continue;
+
+		headers += line + "\n";
+	}
+	return (headers);
 }

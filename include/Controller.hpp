@@ -2,6 +2,7 @@
 
 #include <sys/socket.h>
 #include <unistd.h>
+#include <ctime>
 #include <map>
 #include <string>
 #include <vector>
@@ -12,6 +13,8 @@
 #include "parser.hpp"
 
 #define BUFFER_SIZE 8192
+#define TIMEOUT 15
+#define CGI_TIMEOUT 30
 
 enum con_type
 {
@@ -22,17 +25,16 @@ enum con_type
 
 struct Connection
 {
+	Request req;
+	Response res;
+	Socket socket;
+	std::vector<Server> servers;
 	con_type type;
 	std::string readBuffer;
 	std::string writeBuffer;
 	size_t sent;
-	time_t lastActivity;
-	std::vector<Server> servers;
-	Socket socket;
 	int targetFd;
-	bool isWaiting;
-	Request req;
-	Response res;
+	time_t lastActivity;
 };
 
 class Controller
@@ -41,26 +43,31 @@ class Controller
 	Controller(Epoll &epoll);
 	~Controller(void);
 
+	Connection &getConnection(int fd);
+	con_type getConnectionTypeByFd(int fd);
+	Response &getResponseByFd(int fd);
+	Request &getRequestByFd(int fd);
+
 	int initServers(std::vector<Socket> &sockets);
 	void newClientConnection(int fd);
 	void newCGIConnection(int fd, int targetFd, int event);
 	void newServerConnection(Socket socket);
 	void closeConnection(int fd);
 	void modifyConnection(int fd, int event);
+	void checkTimeouts(void);
+
 	int handleRequest(int fd);
-	void handleCGIInput(int fd);
+	int handleCGI(serverInfo &server, requestInfo &request);
+	void handleCGIOutput(int fd);
 	int read(int fd);
 	int write(int fd);
-	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request);
-	int handleCGI(serverInfo &server, requestInfo &request);
-	std::string normalizeEnvName(std::string headerName);
 
-	Connection &getConnection(int fd);
-	con_type getConnectionTypeByFd(int fd);
-	Response &getResponseByFd(int fd);
-	Request &getRequestByFd(int fd);
+	std::string extractAdditionalHeaders(std::string header);
+	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request);
+	std::string normalizeEnvName(std::string headerName);
 
    private:
 	std::map<int, Connection> _connections;
+	std::map<int, time_t> _cgiConnections;
 	Epoll &_epoll;
 };
