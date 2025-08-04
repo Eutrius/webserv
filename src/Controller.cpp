@@ -172,6 +172,7 @@ int Controller::handleRequest(int fd)
 			return (1);
 		}
 	}
+
 	if (request.isCGI)
 	{
 		int outFD = handleCGI(server, request, curr.socket.getHost());
@@ -211,7 +212,13 @@ int Controller::handleRequest(int fd)
 			}
 		}
 		else if (request.method == DELETE)
-			res.handleDelete(server, request);
+		{
+			if (res.handleDelete(server, request))
+			{
+				curr.writeBuffer = res.getCompleteResponse();
+				return (1);
+			}
+		}
 	}
 
 	res.handleError(server, request, location);
@@ -223,17 +230,8 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 {
 	int outPipe[2];
 	int inPipe[2];
-
-	if (pipe(outPipe) == -1)
+	if (initPipes(outPipe, inPipe))
 	{
-		request.status = 500;
-		return (0);
-	}
-
-	if (pipe(inPipe) == -1)
-	{
-		close(outPipe[0]);
-		close(outPipe[1]);
 		request.status = 500;
 		return (0);
 	}
@@ -282,7 +280,10 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 
 		std::string scriptDir = scriptPath.substr(0, scriptPath.find_last_of('/'));
 		if (!scriptDir.empty())
-			chdir(scriptDir.c_str());
+		{
+			if (chdir(scriptDir.c_str()) == -1)
+				std::exit(1);
+		}
 
 		execve(binary.c_str(), &argv[0], &envp[0]);
 		std::exit(1);
@@ -313,6 +314,40 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 		_cgiConnections[pid] = std::time(NULL);
 		return (outPipe[0]);
 	}
+}
+
+int Controller::initPipes(int inPipe[2], int outPipe[2])
+{
+	if (pipe(outPipe) == -1)
+		return (1);
+
+	if (pipe(inPipe) == -1)
+	{
+		close(outPipe[0]);
+		close(outPipe[1]);
+		return (1);
+	}
+
+	int outPipeFlags = fcntl(outPipe[0], F_GETFL);
+	if (outPipeFlags == -1 || fcntl(outPipe[0], F_SETFL, outPipeFlags | O_NONBLOCK) == -1)
+	{
+		close(outPipe[0]);
+		close(outPipe[1]);
+		close(inPipe[0]);
+		close(inPipe[1]);
+		return (1);
+	}
+
+	int inPipeFlags = fcntl(inPipe[1], F_GETFL);
+	if (inPipeFlags == -1 || fcntl(inPipe[1], F_SETFL, inPipeFlags | O_NONBLOCK) == -1)
+	{
+		close(outPipe[0]);
+		close(outPipe[1]);
+		close(inPipe[0]);
+		close(inPipe[1]);
+		return (1);
+	}
+	return (0);
 }
 
 void Controller::handleCGIOutput(int fd)

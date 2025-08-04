@@ -1,5 +1,4 @@
 #include "Response.hpp"
-#include <ctime>
 
 Response::Response(void)
 {
@@ -29,15 +28,24 @@ int Response::handleFile(std::string path)
 
 void Response::handleError(serverInfo &server, requestInfo &request, Location &location)
 {
-	if (!location.error_page[request.status].empty())
+	int err = 0;
+	std::string errorFile = location.error_page[request.status];
+	if (!errorFile.empty())
 	{
-		if (handleFile(location.error_page[request.status]))
+		if (checkFile(errorFile, err))
+		{
+			if (handleFile(errorFile))
+				request.status = 403;
+			else
+			{
+				generateHeader(request.status, "text/html", server.location);
+				return;
+			}
+		}
+		else if (err == EACCES)
 			request.status = 403;
 		else
-		{
-			generateHeader(request.status, getMimeType(server.link), server.location);
-			return;
-		}
+			request.status = 404;
 	}
 	defaultHtmlBody(request.status);
 	return;
@@ -45,7 +53,8 @@ void Response::handleError(serverInfo &server, requestInfo &request, Location &l
 
 int Response::handleGet(serverInfo &server, requestInfo &request, Location &location)
 {
-	if (fileExists(server.link))
+	int err = 0;
+	if (checkFile(server.link, err))
 	{
 		if (isDirectory(server.link))
 		{
@@ -64,7 +73,7 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 			for (size_t i = 0; i < location.index.size(); i++)
 			{
 				std::string path = link + location.index[i];
-				if (Response::fileExists(path) && !Response::isDirectory(path))
+				if (checkFile(path, err) && !isDirectory(path))
 				{
 					if (handleFile(path))
 						request.status = 403;
@@ -98,6 +107,8 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 			}
 		}
 	}
+	else if (err == EACCES)
+		request.status = 403;
 	else
 		request.status = 404;
 	return (0);
@@ -105,6 +116,7 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 
 int Response::handlePost(requestInfo &request, Location &location)
 {
+	int err = 0;
 	if (!location.upload_dir.empty())
 	{
 		std::string uploadPath = location.upload_dir;
@@ -117,8 +129,13 @@ int Response::handlePost(requestInfo &request, Location &location)
 
 		std::string fullPath = uploadPath + filename;
 
-		if (!fileExists(uploadPath) || !isDirectory(uploadPath))
-			request.status = 404;
+		if (!checkFile(uploadPath, err) || !isDirectory(uploadPath))
+		{
+			if (err == EACCES)
+				request.status = 403;
+			else
+				request.status = 404;
+		}
 		else
 		{
 			std::ofstream file(fullPath.c_str(), std::ios::binary);
@@ -127,7 +144,7 @@ int Response::handlePost(requestInfo &request, Location &location)
 				file.write(request.body.c_str(), request.body.size());
 				file.close();
 				request.status = 201;
-				return (1);
+				return (0);
 			}
 			else
 				request.status = 500;
@@ -138,17 +155,24 @@ int Response::handlePost(requestInfo &request, Location &location)
 	return (0);
 }
 
-void Response::handleDelete(serverInfo &server, requestInfo &request)
+int Response::handleDelete(serverInfo &server, requestInfo &request)
 {
-	if (Response::fileExists(server.link))
+	int err = 0;
+	if (checkFile(server.link, err))
 	{
 		if (unlink(server.link.c_str()) == 0)
-			request.status = 204;
+		{
+			generateHeader(204, "", "");
+			return (1);
+		}
 		else
 			request.status = 403;
 	}
+	else if (err == EACCES)
+		request.status = 403;
 	else
 		request.status = 404;
+	return (0);
 }
 
 std::string Response::getCompleteResponse(void)
@@ -162,7 +186,9 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 	header << "HTTP/1.1 " << statusCode << " " << getStatusMessage(statusCode) << "\r\n";
 	header << "Server: Ngin42/1.0" << "\r\n";
 	header << "Date: " << generateDate() << "\r\n";
-	header << "Content-Length: " << _body.size() << "\r\n";
+
+	if (!_body.empty())
+		header << "Content-Length: " << _body.size() << "\r\n";
 
 	if (!contentType.empty())
 		header << "Content-Type: " << contentType << "\r\n";
@@ -413,10 +439,13 @@ std::string Response::getStatusMessage(int statusCode)
 	}
 }
 
-bool Response::fileExists(std::string path)
+bool Response::checkFile(std::string path, int &err)
 {
 	struct stat st;
-	return (stat(path.c_str(), &st) == 0);
+	if (stat(path.c_str(), &st) == 0)
+		return (true);
+	err = errno;
+	return (false);
 }
 
 bool Response::isDirectory(std::string path)

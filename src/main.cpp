@@ -5,7 +5,7 @@
 #include "Request.hpp"
 #include "Socket.hpp"
 
-int serverState;
+int serverState = 0;
 static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap);
 static void handleSignal(int signal);
 
@@ -66,6 +66,7 @@ int main(int argc, char const *argv[])
 				{
 					if (checkBody(curr.readBuffer))
 					{
+						std::cout << curr.readBuffer << std::endl;
 						Request req(curr.readBuffer, curr.socket.getServers());
 
 						// if (req.getInfo().newClient == true)

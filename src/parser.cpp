@@ -391,9 +391,9 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 
 	serverx.listen = default_listen;                               // Default HTTP port
 	serverx.server_name = std::vector<std::string>();              // No domain configured (empty array)
-	serverx.root = "";                                             // No root directory configured (empty string)
+	serverx.root = "www";                                          // No root directory configured (empty string)
 	serverx.index = std::vector<std::string>();                    // Common default page
-	serverx.upload_dir = "";                                       // No upload directory
+	serverx.upload_dir = "www/uploads";                            // No upload directory
 	serverx.autoindex = false;                                     // Directory listing disabled
 	serverx.cgi_extension = std::map<std::string, std::string>();  // No CGI extensions enabled
 	serverx.methods = 7;                                           // Allowed all methods

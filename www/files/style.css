@@ -1,0 +1,22 @@
+/* Test CSS file */
+body {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #74b9ff, #0984e3);
+  color: #2d3436;
+  margin: 0;
+  padding: 20px;
+}
+
+.test-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+h1 {
+  color: #0984e3;
+  text-align: center;
+}

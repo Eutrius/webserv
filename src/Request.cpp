@@ -468,7 +468,7 @@ void Request::printInfoRequest(void)
 	std::cout << "BOUNDARY: " << _requestInfo.boundary << std::endl;
 	std::cout << "BODY: " << _requestInfo.body << std::endl;
 	std::cout << "CGI PATH: " << _requestInfo.cgiPath << std::endl;
-	printServers(temp);
+	// printServers(temp);
 }
 
 bool checkBody(std::string request)

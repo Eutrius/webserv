@@ -1,0 +1,10 @@
+{
+  "message": "Test JSON file",
+  "server": "custom webserver",
+  "timestamp": "2025-01-01T00:00:00Z",
+  "data": {
+    "users": ["alice", "bob", "charlie"],
+    "active": true,
+    "count": 42
+  }
+}
