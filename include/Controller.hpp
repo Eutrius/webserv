@@ -2,6 +2,7 @@
 
 #include <sys/socket.h>
 #include <unistd.h>
+#include <ctime>
 #include <map>
 #include <string>
 #include <vector>
@@ -12,46 +13,61 @@
 #include "parser.hpp"
 
 #define BUFFER_SIZE 8192
+#define TIMEOUT 15
+#define CGI_TIMEOUT 30
 
 enum con_type
 {
 	CON_SERVER = 1,
 	CON_CLIENT = 1 << 1,
 	CON_CGI = 1 << 2,
-	CON_FILE = 1 << 3,
 };
 
 struct Connection
 {
+	Request req;
+	Response res;
+	Socket socket;
 	con_type type;
 	std::string readBuffer;
 	std::string writeBuffer;
 	size_t sent;
-	time_t lastActivity;
-	std::vector<Server> servers;
-	Socket socket;
 	int targetFd;
-	bool isWaiting;
-	Request req;
-	Response res;
+	time_t lastActivity;
 };
 
 class Controller
 {
    public:
-	Controller(void);
+	Controller(Epoll &epoll);
 	~Controller(void);
-
-	void newClientConnection(Epoll &epoll, int fd);
-	void newServerConnection(Socket socket);
-	void closeConnection(int fd);
-	int handleRequest(int fd);
-	int read(int fd);
-	int write(int fd);
 
 	Connection &getConnection(int fd);
 	con_type getConnectionTypeByFd(int fd);
+	Response &getResponseByFd(int fd);
+	Request &getRequestByFd(int fd);
+
+	int initServers(std::vector<Socket> &sockets);
+	void newClientConnection(int fd);
+	void newCGIConnection(int fd, int targetFd, int event);
+	void newServerConnection(Socket socket);
+	void closeConnection(int fd);
+	void modifyConnection(int fd, int event);
+	void checkTimeouts(void);
+
+	int handleRequest(int fd);
+	int handleCGI(serverInfo &server, requestInfo &request, t_host host);
+	void handleCGIOutput(int fd);
+	int read(int fd);
+	int write(int fd);
+
+	std::string extractAdditionalHeaders(std::string header);
+	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host);
+	std::string normalizeEnvName(std::string headerName);
+	std::string itoaIP(int ip);
 
    private:
 	std::map<int, Connection> _connections;
+	std::map<int, time_t> _cgiConnections;
+	Epoll &_epoll;
 };

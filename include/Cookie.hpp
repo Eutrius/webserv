@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <fstream>
@@ -9,7 +10,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <cstdlib>
 #include "Request.hpp"
 
 struct Client
@@ -18,23 +18,23 @@ struct Client
 	std::string info;
 };
 
-class	Cookie
+class Cookie
 {
-	public:
-		Cookie(void);
-		Cookie(const Cookie& ref);
-		Cookie& operator = (const Cookie& ref);
-		~Cookie(void);
+   public:
+	Cookie(void);
+	Cookie(const Cookie& ref);
+	Cookie& operator=(const Cookie& ref);
+	~Cookie(void);
 
-		std::vector<Client> getClients(void) const;
-		void	createCookie(void);
-		void	analizeCookie(std::string line);
-		void	printClients(void);
+	std::vector<Client> getClients(void) const;
+	void createCookie(void);
+	void analizeCookie(std::string line);
+	void printClients(void);
 
-	private:
-		int		findId(std::string line);
-		void	createCookie(std::string id);
-		std::string generateId(void);
+   private:
+	int findId(std::string line);
+	void createCookie(std::string id);
+	std::string generateId(void);
 
-		std::vector<Client>	clients;
+	std::vector<Client> clients;
 };

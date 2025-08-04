@@ -20,8 +20,8 @@ class Epoll
 	int getFd(void) const;
 	struct epoll_event* getEvents(void);
 
-	void addFd(int fd);
-	int removeFd(int fd);
+	void addFd(int fd, int event);
+	void removeFd(int fd);
 	int modifyFd(int fd, int events);
 	int wait(void);
 

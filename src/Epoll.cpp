@@ -22,25 +22,21 @@ struct epoll_event* Epoll::getEvents(void)
 	return (_events);
 }
 
-void Epoll::addFd(int fd)
+void Epoll::addFd(int fd, int event)
 {
 	int nr_fd;
 	struct epoll_event ev;
 
-	ev.events = EPOLLIN;
+	ev.events = event;
 	ev.data.fd = fd;
 	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev);
 	if (nr_fd == -1)
 		throw std::runtime_error("Epoll: failed to add fd to epoll");
-	std::cout << "Epoll added" << std::endl;
 }
 
-int Epoll::removeFd(int fd)
+void Epoll::removeFd(int fd)
 {
-	int nr_fd;
-
-	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
-	return (nr_fd);
+	epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
 }
 
 int Epoll::modifyFd(int fd, int events)

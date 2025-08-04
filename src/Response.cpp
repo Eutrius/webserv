@@ -1,4 +1,5 @@
 #include "Response.hpp"
+#include <ctime>
 
 Response::Response(void)
 {
@@ -8,42 +9,159 @@ Response::~Response(void)
 {
 }
 
-void Response::handleRedirect(Request req)
+void Response::handleRedirect(serverInfo &server, requestInfo &request)
 {
-	serverInfo server = req.getServerInfo();
-	requestInfo request = req.getInfo();
-
 	_body = "";
 	generateHeader(request.status, "", server.to_client);
 }
 
-std::string Response::handleError(Request req)
+int Response::handleFile(std::string path)
 {
-	std::string body;
-	(void) req;
+	std::ifstream file(path.c_str(), std::ios::binary);
+	if (!file)
+		return (1);
 
-	return (body);
+	std::ostringstream content;
+	content << file.rdbuf();
+	_body = content.str();
+	return (0);
+}
+
+void Response::handleError(serverInfo &server, requestInfo &request, Location &location)
+{
+	if (!location.error_page[request.status].empty())
+	{
+		if (handleFile(location.error_page[request.status]))
+			request.status = 403;
+		else
+		{
+			generateHeader(request.status, getMimeType(server.link), server.location);
+			return;
+		}
+	}
+	defaultHtmlBody(request.status);
+	return;
+}
+
+int Response::handleGet(serverInfo &server, requestInfo &request, Location &location)
+{
+	if (fileExists(server.link))
+	{
+		if (isDirectory(server.link))
+		{
+			if (!request.URI.empty() && request.URI[request.URI.size() - 1] != '/')
+			{
+				request.status = 301;
+				server.to_client = request.URI + "/";
+				handleRedirect(server, request);
+				return (1);
+			}
+
+			std::string link = server.link;
+			if (link[link.size() - 1] != '/')
+				link += '/';
+
+			for (size_t i = 0; i < location.index.size(); i++)
+			{
+				std::string path = link + location.index[i];
+				if (Response::fileExists(path) && !Response::isDirectory(path))
+				{
+					if (handleFile(path))
+						request.status = 403;
+					else
+					{
+						generateHeader(request.status, getMimeType(path), server.location);
+						return (1);
+					}
+				}
+			}
+			if (location.autoindex)
+			{
+				request.status = generateAutoindex(server.link, request.URI);
+				if (request.status == 200)
+				{
+					generateHeader(request.status, "text/html", server.location);
+					return (1);
+				}
+			}
+			else
+				request.status = 403;
+		}
+		else
+		{
+			if (handleFile(server.link))
+				request.status = 403;
+			else
+			{
+				generateHeader(request.status, getMimeType(server.link), server.location);
+				return (1);
+			}
+		}
+	}
+	else
+		request.status = 404;
+	return (0);
+}
+
+int Response::handlePost(requestInfo &request, Location &location)
+{
+	if (!location.upload_dir.empty())
+	{
+		std::string uploadPath = location.upload_dir;
+		if (uploadPath[uploadPath.size() - 1] != '/')
+			uploadPath += '/';
+
+		std::string filename = request.filename;
+		if (filename.empty())
+			filename = "file";
+
+		std::string fullPath = uploadPath + filename;
+
+		if (!fileExists(uploadPath) || !isDirectory(uploadPath))
+			request.status = 404;
+		else
+		{
+			std::ofstream file(fullPath.c_str(), std::ios::binary);
+			if (file.is_open())
+			{
+				file.write(request.body.c_str(), request.body.size());
+				file.close();
+				request.status = 201;
+				return (1);
+			}
+			else
+				request.status = 500;
+		}
+	}
+	else
+		request.status = 403;
+	return (0);
+}
+
+void Response::handleDelete(serverInfo &server, requestInfo &request)
+{
+	if (Response::fileExists(server.link))
+	{
+		if (unlink(server.link.c_str()) == 0)
+			request.status = 204;
+		else
+			request.status = 403;
+	}
+	else
+		request.status = 404;
 }
 
 std::string Response::getCompleteResponse(void)
 {
-	if (_header.empty())
-	{
-		_header =
-		    "HTTP/1.1 200 OK\r\n"
-		    "Content-Type: text/html\r\n"
-		    "Content-Length: 11\r\n"
-		    "\r\n";
-		_body = "Hello World";
-	}
-
-	return (_header + _body);
+	return (_header + "\r\n" + _body);
 }
 
 void Response::generateHeader(int statusCode, std::string contentType, std::string location)
 {
 	std::ostringstream header;
 	header << "HTTP/1.1 " << statusCode << " " << getStatusMessage(statusCode) << "\r\n";
+	header << "Server: Ngin42/1.0" << "\r\n";
+	header << "Date: " << generateDate() << "\r\n";
 	header << "Content-Length: " << _body.size() << "\r\n";
 
 	if (!contentType.empty())
@@ -53,14 +171,12 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 		header << "Location: " << location << "\r\n";
 
 	header << "Connection: close\r\n";
-	header << "\r\n";
-
 	_header = header.str();
 }
 
 int Response::generateAutoindex(std::string path, std::string uri)
 {
-	DIR* dir = opendir(path.c_str());
+	DIR *dir = opendir(path.c_str());
 	if (!dir)
 		return (500);
 
@@ -69,35 +185,36 @@ int Response::generateAutoindex(std::string path, std::string uri)
 	html << "<h1>Directory listing for " << uri << "</h1>\n<ul>\n";
 
 	if (uri != "/")
-	{
 		html << "<li><a href=\"../\">../</a></li>\n";
-	}
 
-	struct dirent* entry;
+	struct dirent *entry;
 	while ((entry = readdir(dir)) != NULL)
 	{
 		std::string name = entry->d_name;
 		if (name == "." || name == "..")
-		{
 			continue;
-		}
 
 		std::string fullPath = path + "/" + name;
 		if (isDirectory(fullPath))
-		{
 			html << "<li><a href=\"" << name << "/\">" << name << "/</a></li>\n";
-		}
 		else
-		{
 			html << "<li><a href=\"" << name << "\">" << name << "</a></li>\n";
-		}
 	}
 
 	html << "</ul>\n</body>\n</html>";
 	closedir(dir);
-
 	_body = html.str();
 	return (200);
+}
+
+std::string Response::generateDate(void)
+{
+	char buffer[100];
+	time_t now = std::time(NULL);
+	struct tm *gmt = std::gmtime(&now);
+	if (std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt) == 0)
+		return ("");
+	return (std::string(buffer));
 }
 
 void Response::defaultHtmlBody(int statusCode)
@@ -116,6 +233,16 @@ void Response::defaultHtmlBody(int statusCode)
 
 	_body = body.str();
 	generateHeader(statusCode, "text/html", "");
+}
+
+void Response::setBody(std::string body)
+{
+	_body = body;
+}
+
+void Response::appendHeader(std::string addtionalHeader)
+{
+	_header += addtionalHeader;
 }
 
 std::string Response::getMimeType(std::string filename)

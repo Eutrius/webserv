@@ -1,4 +1,5 @@
 #include <csignal>
+#include <cstdlib>
 #include "Controller.hpp"
 #include "Epoll.hpp"
 #include "Request.hpp"
@@ -11,35 +12,20 @@ static void handleSignal(int signal);
 int main(int argc, char const *argv[])
 {
 	t_serversMap serversMap;
-	Cookie		cookie;
+	Cookie cookie;
 	if (!parseConfig(argc, argv, serversMap))
 		return (1);
 
 	std::vector<Socket> sockets = Socket::initSockets(serversMap);
-	Controller controller;
+
 	Epoll epoll;
 	if (epoll.getFd() == -1)
 		return (1);
 
-	std::vector<Socket>::iterator it = sockets.begin();
-	while (it != sockets.end())
+	Controller controller(epoll);
+	if (controller.initServers(sockets))
 	{
-		try
-		{
-			epoll.addFd(it->getFd());
-			controller.newServerConnection(*it);
-			it++;
-		}
-		catch (std::exception &e)
-		{
-			std::cout << e.what() << std::endl;
-			it = sockets.erase(it);
-		}
-	}
-
-	if (sockets.empty())
-	{
-		std::cerr << "Webserv: no sockets created" << std::endl;
+		std::cerr << "Webserv: no server created" << std::endl;
 		return (1);
 	}
 
@@ -58,57 +44,56 @@ int main(int argc, char const *argv[])
 
 			if (eventFlags & (EPOLLHUP | EPOLLERR))
 			{
-				epoll.removeFd(fd);
 				controller.closeConnection(fd);
+				continue;
 			}
-			else if (eventFlags & EPOLLIN)
+
+			Connection &curr = controller.getConnection(fd);
+			con_type type = curr.type;
+			if (eventFlags & EPOLLIN)
 			{
-				con_type type = controller.getConnectionTypeByFd(fd);
-
 				if (type & CON_SERVER)
-					controller.newClientConnection(epoll, fd);
-				else
 				{
-					int bytes_read = controller.read(fd);
-					if (bytes_read == -1)
-						continue;
+					controller.newClientConnection(fd);
+					continue;
+				}
 
-					if (type & CON_CLIENT)
+				int bytesRead = controller.read(fd);
+				if (bytesRead == -1)
+					continue;
+
+				if (type & CON_CLIENT)
+				{
+					if (checkBody(curr.readBuffer))
 					{
-						Connection &curr = controller.getConnection(fd);
-						if (checkBody(curr.readBuffer))
-						{
-							Request req(curr.readBuffer, curr.servers);
-							if (controller.handleRequest(fd))
-								epoll.modifyFd(fd, EPOLLOUT);
-							else
-								epoll.modifyFd(fd, 0);
-							if (req.getInfo().newClient == true)
-								cookie.createCookie();
-							else
-								cookie.analizeCookie(req.getInfo().cookie);
-							cookie.printClients();
-						}
-					}
-					else if (bytes_read < BUFFER_SIZE && type & (CON_CGI | CON_FILE))
-					{
-						Connection &curr = controller.getConnection(fd);
-						Connection &target = controller.getConnection(curr.targetFd);
-						(void) target;
+						Request req(curr.readBuffer, curr.socket.getServers());
+
+						if (req.getInfo().newClient == true)
+							cookie.createCookie();
+						else
+							cookie.analizeCookie(req.getInfo().cookie);
+						cookie.printClients();
+
+						if (controller.handleRequest(fd))
+							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}
+				else if (type & CON_CGI && bytesRead == 0)
+					controller.handleCGIOutput(fd);
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
-				if (controller.write(fd))
+				int bytesSent = controller.write(fd);
+				if (type & CON_CLIENT)
 				{
-					epoll.removeFd(fd);
-					controller.closeConnection(fd);
+					if (curr.sent >= curr.writeBuffer.length())
+						controller.closeConnection(fd);
 				}
+				else if (type & CON_CGI && bytesSent == 0)
+					controller.closeConnection(fd);
 			}
 		}
 	}
-	Socket::closeSockets(sockets);
 	std::cout << "Server shutdown" << std::endl;
 	return (0);
 }

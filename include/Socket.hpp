@@ -17,16 +17,16 @@ class Socket
 	Socket &operator=(const Socket &other);
 
 	int getFd(void) const;
+	t_host getHost(void) const;
 	std::vector<Server> getServers(void) const;
 
 	void init(t_host host, std::vector<Server> servers);
-	void close(void);
 	int accept(void);
 
 	static std::vector<Socket> initSockets(t_serversMap serverMaps);
-	static void closeSockets(std::vector<Socket> sockets);
 
    private:
 	int _fd;
+	t_host _host;
 	std::vector<Server> _servers;
 };

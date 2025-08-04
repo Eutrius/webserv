@@ -171,7 +171,8 @@ void printServers(const std::vector<Server> &servers)
 		std::cout << "client_max_body_size: " << s.client_max_body_size << "\n";
 
 		std::cout << "cgi_extension: ";
-		for (std::map<std::string, std::string>::const_iterator it = s.cgi_extension.begin(); it != s.cgi_extension.end(); ++it)
+		for (std::map<std::string, std::string>::const_iterator it = s.cgi_extension.begin();
+		     it != s.cgi_extension.end(); ++it)
 			std::cout << "  [" << it->first << "] => " << it->second << "\t";
 		std::cout << "\n";
 
@@ -202,7 +203,8 @@ void printServers(const std::vector<Server> &servers)
 			std::cout << "\n";
 
 			std::cout << "    cgi_extension: ";
-			for (std::map<std::string, std::string>::const_iterator jj = loc.cgi_extension.begin(); jj != loc.cgi_extension.end(); ++jj)
+			for (std::map<std::string, std::string>::const_iterator jj = loc.cgi_extension.begin();
+			     jj != loc.cgi_extension.end(); ++jj)
 				std::cout << "  [" << jj->first << "] => " << jj->second << "\t";
 			std::cout << "\n";
 
@@ -387,16 +389,16 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 	ll.second = 80;
 	default_listen.push_back(ll);
 
-	serverx.listen = default_listen;                     // Default HTTP port
-	serverx.server_name = std::vector<std::string>();    // No domain configured (empty array)
-	serverx.root = "";                                   // No root directory configured (empty string)
-	serverx.index = std::vector<std::string>();          // Common default page
-	serverx.upload_dir = "";                             // No upload directory
-	serverx.autoindex = false;                           // Directory listing disabled
+	serverx.listen = default_listen;                               // Default HTTP port
+	serverx.server_name = std::vector<std::string>();              // No domain configured (empty array)
+	serverx.root = "";                                             // No root directory configured (empty string)
+	serverx.index = std::vector<std::string>();                    // Common default page
+	serverx.upload_dir = "";                                       // No upload directory
+	serverx.autoindex = false;                                     // Directory listing disabled
 	serverx.cgi_extension = std::map<std::string, std::string>();  // No CGI extensions enabled
-	serverx.methods = 7;                                 // Allowed all methods
-	serverx.client_max_body_size = 1048576;              // 1MB (common default value)
-	serverx.error_page = std::map<int, std::string>();   // No custom error pages
+	serverx.methods = 7;                                           // Allowed all methods
+	serverx.client_max_body_size = 1048576;                        // 1MB (common default value)
+	serverx.error_page = std::map<int, std::string>();             // No custom error pages
 	for (MapStringToVector::const_iterator it = m.begin(); it != m.end(); ++it)
 	{  // chiave it->first; valore it->second
 		if (it->first == "listen")
@@ -509,7 +511,8 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 	if (tokens[0] == "cgi_extension")
 	{
 		if (tokens.size() != 3)
-			throw std::runtime_error("\"cgi_extension\" directive takes 2 arguments: file extension and interpreter program");
+			throw std::runtime_error(
+			    "\"cgi_extension\" directive takes 2 arguments: file extension and interpreter program");
 		if (tokens[1] != ".php" && tokens[1] != ".py")
 			throw std::runtime_error("Unknown cgi_extension: \"" + tokens[1] + "\", valid only: .py .php");
 		if (result.find(tokens[1]) != result.end())
