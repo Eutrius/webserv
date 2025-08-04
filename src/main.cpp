@@ -67,14 +67,15 @@ int main(int argc, char const *argv[])
 					if (checkBody(curr.readBuffer))
 					{
 						Request req(curr.readBuffer, curr.socket.getServers());
-						if (controller.handleRequest(fd))
-							controller.modifyConnection(fd, EPOLLOUT);
 
 						if (req.getInfo().newClient == true)
 							cookie.createCookie();
 						else
 							cookie.analizeCookie(req.getInfo().cookie);
 						cookie.printClients();
+
+						if (controller.handleRequest(fd))
+							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}
 				else if (type & CON_CGI && bytesRead == 0)

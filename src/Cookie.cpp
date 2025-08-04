@@ -1,26 +1,30 @@
 #include "Cookie.hpp"
 
-Cookie::Cookie(void){}
+Cookie::Cookie(void)
+{
+}
 
 Cookie::Cookie(const Cookie& ref)
 {
 	*this = ref;
 }
 
-Cookie& Cookie::operator = (const Cookie& ref)
+Cookie& Cookie::operator=(const Cookie& ref)
 {
 	this->clients = ref.clients;
 	return (*this);
 }
 
-Cookie::~Cookie(void) {}
+Cookie::~Cookie(void)
+{
+}
 
 std::vector<Client> Cookie::getClients(void) const
 {
 	return (this->clients);
 }
 
-void	Cookie::createCookie(void)
+void Cookie::createCookie(void)
 {
 	Client new_client;
 
@@ -28,7 +32,7 @@ void	Cookie::createCookie(void)
 	clients.push_back(new_client);
 }
 
-void	Cookie::createCookie(std::string id)
+void Cookie::createCookie(std::string id)
 {
 	Client new_client;
 
@@ -36,10 +40,10 @@ void	Cookie::createCookie(std::string id)
 	clients.push_back(new_client);
 }
 
-void	Cookie::analizeCookie(std::string line)
+void Cookie::analizeCookie(std::string line)
 {
-	std::pair <std::string, std::string> value;
-	int	client;
+	std::pair<std::string, std::string> value;
+	int client;
 	// int pos;
 	// int start;
 	// int	end;
@@ -74,12 +78,12 @@ void	Cookie::analizeCookie(std::string line)
 	// }
 }
 
-int		Cookie::findId(std::string line)
+int Cookie::findId(std::string line)
 {
 	std::string id;
-	int	client = -1;
+	int client = -1;
 	int pos;
-	int	end;
+	int end;
 
 	pos = line.find("session_id=");
 	if (pos != -1)
@@ -102,10 +106,10 @@ int		Cookie::findId(std::string line)
 	return (client - 1);
 }
 
-std::string	Cookie::generateId(void)
+std::string Cookie::generateId(void)
 {
 	std::string id;
-	int		c;
+	int c;
 
 	for (int i = 0; i < 8; i++)
 	{
@@ -115,9 +119,9 @@ std::string	Cookie::generateId(void)
 	return (id);
 }
 
-void	Cookie::printClients(void)
+void Cookie::printClients(void)
 {
-	for (size_t i = 0; i < clients.size(); i ++)
+	for (size_t i = 0; i < clients.size(); i++)
 	{
 		std::cout << clients[i].id << std::endl;
 		std::cout << clients[i].info << std::endl;
