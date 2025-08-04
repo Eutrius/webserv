@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "parser.hpp"
+#include "Cookie.hpp"
 
 struct serverInfo
 {
@@ -39,6 +40,7 @@ struct requestInfo
 	int status;
 	bool isRedirect;
 	bool isCGI;
+	bool newClient;
 };
 
 class Request

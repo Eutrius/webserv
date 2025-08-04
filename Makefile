@@ -16,6 +16,7 @@ SRC = src/main.cpp \
 	  src/Response.cpp \
 	  src/Controller.cpp \
 	  src/parser.cpp \
+	  src/Cookie.cpp
 
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 IGN = .gitignore
