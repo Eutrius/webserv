@@ -101,6 +101,31 @@ void Controller::modifyConnection(int fd, int event)
 
 void Controller::checkTimeouts(void)
 {
+	std::map<int, Connection>::iterator it;
+	for (it = _connections.begin(); it != _connections.end(); it++)
+	{
+		Connection &curr = it->second;
+
+		if (curr.type & CON_SERVER)
+			continue;
+
+		serverInfo &server = curr.req.getServerInfo();
+		requestInfo &request = curr.req.getInfo();
+		Location location = server._rightServer.location[server.location];
+		Response &res = curr.res;
+
+		if (curr.type & CON_CLIENT)
+		{
+			if (std::time(NULL) - curr.lastActivity > (request.isCGI ? CGI_TIMEOUT : TIMEOUT))
+			{
+				request.status = 408;
+				res.setBody("");
+				res.handleError(server, request, location);
+				curr.writeBuffer = res.getCompleteResponse();
+				modifyConnection(it->first, EPOLLOUT);
+			}
+		}
+	}
 }
 
 int Controller::read(int fd)

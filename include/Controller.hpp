@@ -29,10 +29,12 @@ struct Connection
 	Response res;
 	Socket socket;
 	con_type type;
+
 	std::string readBuffer;
 	std::string writeBuffer;
 	size_t sent;
 	int targetFd;
+	int pid;
 	time_t lastActivity;
 };
 

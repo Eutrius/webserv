@@ -1,0 +1,17 @@
+Language: Cpp
+BasedOnStyle: Google
+
+Standard: Cpp03
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: ForIndentation
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Allman
+IndentCaseLabels: true
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+IncludeBlocks: Me
