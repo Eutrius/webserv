@@ -19,6 +19,11 @@ Cookie::~Cookie(void)
 {
 }
 
+int Cookie::getCurrentClient(void) const
+{
+	return (this->currentClient);
+}
+
 std::vector<Client> Cookie::getClients(void) const
 {
 	return (this->clients);
@@ -29,8 +34,10 @@ void Cookie::createCookie(void)
 	Client new_client;
 
 	new_client.id = generateId();
-	new_client.info.append("sessionId=" + new_client.id + "; Max-Age=3600\r\n");
+	new_client.info.push_back("sessionId=" + new_client.id + "Max-Age=3600\r\n");
+	//new_client.info.push_back("");
 	clients.push_back(new_client);
+	currentClient = clients.size() - 1;
 }
 
 void Cookie::createCookie(std::string id)
@@ -38,45 +45,22 @@ void Cookie::createCookie(std::string id)
 	Client new_client;
 
 	new_client.id = id;
+	new_client.info.push_back("sessionId=" + new_client.id + "\r\n");
+	new_client.info.push_back("Max-Age=3600\r\n");
 	clients.push_back(new_client);
+	currentClient = clients.size() - 1;
 }
 
 void Cookie::analizeCookie(std::string line)
 {
 	std::pair<std::string, std::string> value;
 	int client;
-	// int pos;
-	// int start;
-	// int	end;
-	// int i = 1;
 
 	client = findId(line);
-	clients[client].info = line;
-	// pos = line.find(";");
-	// while (pos != -1)
-	// {
-	// 	line = line.substr(pos);
-	// 	std::cout << line << std::endl;
-	// 	start = line.find("=");
-	// 	if (start != -1)
-	// 	{
-	// 		while (line[start - i] != ' ')
-	// 		{
-	// 			std::cout << line[start - i] << std::endl;
-	// 			value.first = line[start - i] + value.first;
-	// 			i++;
-	// 		}
-	// 		pos = line.find(";", start);
-	// 		if (pos == -1)
-	// 			end = line.find("\n", pos);
-	// 		else
-	// 			end = pos;
-	// 		value.second.append(line, start + 1, end - start - 2);
-	// 		clients[client].info.push_back(value);
-	// 	}
-	// 	else
-	// 		pos = -1;
-	// }
+	if (client == -1)
+		createCookie();
+	else
+		currentClient = client;
 }
 
 int Cookie::findId(std::string line)
@@ -99,14 +83,11 @@ int Cookie::findId(std::string line)
 		for (size_t i = 0; i < clients.size(); i++)
 			if (clients[i].id == id)
 				return (i);
-		if (client == -1)
-		{
-			createCookie(id);
-			client = clients.size();
-		}
+		createCookie(id);
+		client = clients.size();
 	}
 	else
-		throw std::runtime_error("Bad request: No session id in Cookie");
+		return (-1);
 	return (client - 1);
 }
 
@@ -128,7 +109,7 @@ void Cookie::printClients(void)
 	for (size_t i = 0; i < clients.size(); i++)
 	{
 		std::cout << clients[i].id << std::endl;
-		std::cout << clients[i].info << std::endl;
+		//std::cout << clients[i].info << std::endl;
 		// for (size_t x = 0; x < clients[i].info.size(); x++)
 		// 	std::cout << clients[i].info[x].first << ": " << clients[i].info[x].second << std::endl;
 	}

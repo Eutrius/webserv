@@ -15,7 +15,7 @@
 struct Client
 {
 	std::string id;
-	std::string info;
+	std::vector <std::string> info;
 };
 
 class Cookie
@@ -27,6 +27,7 @@ class Cookie
 	~Cookie(void);
 
 	std::vector<Client> getClients(void) const;
+	int getCurrentClient(void) const;
 	void createCookie(void);
 	void analizeCookie(std::string line);
 	void printClients(void);
@@ -35,6 +36,7 @@ class Cookie
 	int findId(std::string line);
 	void createCookie(std::string id);
 	std::string generateId(void);
+	int	currentClient;
 
 	std::vector<Client> clients;
 };
