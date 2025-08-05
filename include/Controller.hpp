@@ -15,6 +15,7 @@
 #define BUFFER_SIZE 8192
 #define TIMEOUT 15
 #define CGI_TIMEOUT 30
+#define SERVER_NAME "Ngin42/1.0"
 
 enum con_type
 {

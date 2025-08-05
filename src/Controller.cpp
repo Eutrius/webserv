@@ -1,5 +1,4 @@
 #include "Controller.hpp"
-#include "Request.hpp"
 
 Controller::Controller(Epoll &epoll) : _epoll(epoll)
 {
@@ -258,7 +257,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 	int outPipe[2];
 	int inPipe[2];
 
-	if (initPipes(outPipe, inPipe))
+	if (initPipes(inPipe, outPipe))
 	{
 		request.status = 500;
 		return (0);
@@ -415,7 +414,7 @@ void Controller::handleCGIOutput(int fd)
 	else
 		headerEndPos += 4;
 
-	std::string header = cgiOutput.substr(0, headerEndPos - (cgiOutput.find("\r\n\r\n") != std::string::npos ? 4 : 2));
+	std::string header = cgiOutput.substr(0, headerEndPos);
 	std::string body = cgiOutput.substr(headerEndPos);
 
 	std::string contentType = findInfo(header, "Content-Type");
@@ -463,7 +462,7 @@ void Controller::generateCGIEnv(std::vector<char *> &envp, std::vector<std::stri
 	envStrings.push_back("SCRIPT_NAME=" + server.link);
 	if (!request.cgiPath.empty())
 		envStrings.push_back("PATH_INFO=" + request.cgiPath);
-	envStrings.push_back("SERVER_NAME=" + request.hostname);
+	envStrings.push_back("SERVER_NAME=" + server._rightServer.server_name[0]);
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
 	envStrings.push_back("REQUEST_URI=" + request.URI);
 	envStrings.push_back("REMOTE_ADDR=" + itoaIP(host.first));
@@ -471,7 +470,6 @@ void Controller::generateCGIEnv(std::vector<char *> &envp, std::vector<std::stri
 	std::stringstream port;
 	port << host.second;
 	envStrings.push_back("SERVER_PORT=" + port.str());
-	std::cout << host.second << std::endl;
 
 	if (!request.formatAccepted.empty())
 		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);

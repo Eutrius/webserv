@@ -1,4 +1,5 @@
 #include "Response.hpp"
+#include "Controller.hpp"
 
 Response::Response(void)
 {
@@ -184,7 +185,7 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 {
 	std::ostringstream header;
 	header << "HTTP/1.1 " << statusCode << " " << getStatusMessage(statusCode) << "\r\n";
-	header << "Server: Ngin42/1.0" << "\r\n";
+	header << "Server: " << SERVER_NAME << "\r\n";
 	header << "Date: " << generateDate() << "\r\n";
 
 	if (!_body.empty())

@@ -43,7 +43,7 @@ int main(int argc, char const *argv[])
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
 
-			if (eventFlags & (EPOLLHUP | EPOLLERR))
+			if (eventFlags & EPOLLERR)
 			{
 				controller.closeConnection(fd);
 				continue;
@@ -51,7 +51,8 @@ int main(int argc, char const *argv[])
 
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;
-			if (eventFlags & EPOLLIN)
+
+			if (eventFlags & (EPOLLIN | EPOLLHUP))
 			{
 				if (type & CON_SERVER)
 				{
