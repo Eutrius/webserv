@@ -68,11 +68,11 @@ int main(int argc, char const *argv[])
 					{
 						Request req(curr.readBuffer, curr.socket.getServers());
 
-						if (req.getInfo().newClient == true)
-							cookie.createCookie();
-						else
-							cookie.analizeCookie(req.getInfo().cookie);
-						cookie.printClients();
+						// if (req.getInfo().newClient == true)
+						// 	cookie.createCookie();
+						// else
+						// 	cookie.analizeCookie(req.getInfo().cookie);
+						// cookie.printClients();
 
 						if (controller.handleRequest(fd))
 							controller.modifyConnection(fd, EPOLLOUT);

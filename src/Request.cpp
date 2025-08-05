@@ -345,7 +345,7 @@ void Request::cleanFile(void)
 	{
 		begin += 4;
 		end = _requestInfo.body.rfind(_requestInfo.boundary);
-		_requestInfo.body = _requestInfo.body.substr(begin, end - begin - 8);
+		_requestInfo.body = _requestInfo.body.substr(begin, end - begin - 4);
 	}
 }
 
@@ -407,7 +407,12 @@ void Request::checkOnLocation(void)
 	if (_serverInfo.link[_serverInfo.link.length() - 1] != '/')
 		_serverInfo.link.append("/");
 	if (end != -1)
+	{
 		_serverInfo.link.append(_requestInfo.URI, end + 1);
+		_requestInfo.URI = _requestInfo.URI.substr(end);
+	}
+	else
+		_requestInfo.URI = "/";
 	if (std::atoi(_requestInfo.contentLength.c_str()) > _serverInfo._rightServer.client_max_body_size)
 	{
 		_requestInfo.status = 400;
