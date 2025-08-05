@@ -55,12 +55,13 @@ class Controller
 	void modifyConnection(int fd, int event);
 	void checkTimeouts(void);
 
-	int handleRequest(int fd);
+	int handleRequest(int fd, std::string cookie);
 	int handleCGI(serverInfo &server, requestInfo &request, t_host host);
 	void handleCGIOutput(int fd);
 	int read(int fd);
 	int write(int fd);
 
+	int initPipes(int inPipe[2], int outPipe[2]);
 	std::string extractAdditionalHeaders(std::string header);
 	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host);
 	std::string normalizeEnvName(std::string headerName);

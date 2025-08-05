@@ -2,9 +2,12 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <ctime>
 #include <sstream>
 #include <string>
 #include "Request.hpp"
+
+class Controller;
 
 class Response
 {
@@ -26,9 +29,10 @@ class Response
 	void handleError(serverInfo &server, requestInfo &request, Location &location);
 	int handlePost(requestInfo &request, Location &location);
 	int handleGet(serverInfo &server, requestInfo &request, Location &location);
-	void handleDelete(serverInfo &server, requestInfo &request);
+	int handleDelete(serverInfo &server, requestInfo &request);
 	void handleRedirect(serverInfo &server, requestInfo &request);
-	bool fileExists(std::string path);
+	void handleCgi(Controller &controller);
+	bool checkFile(std::string path, int &err);
 	bool isDirectory(std::string path);
 
    private:

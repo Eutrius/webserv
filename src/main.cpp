@@ -5,12 +5,13 @@
 #include "Request.hpp"
 #include "Socket.hpp"
 
-int serverState;
+int serverState = 0;
 static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap);
 static void handleSignal(int signal);
 
 int main(int argc, char const *argv[])
 {
+	std::srand(std::time(NULL));
 	t_serversMap serversMap;
 	Cookie cookie;
 	if (!parseConfig(argc, argv, serversMap))
@@ -66,15 +67,16 @@ int main(int argc, char const *argv[])
 				{
 					if (checkBody(curr.readBuffer))
 					{
+						std::cout << curr.readBuffer << std::endl;
 						Request req(curr.readBuffer, curr.socket.getServers());
 
-						// if (req.getInfo().newClient == true)
-						// 	cookie.createCookie();
-						// else
-						// 	cookie.analizeCookie(req.getInfo().cookie);
-						// cookie.printClients();
+						if (req.getInfo().newClient == true)
+							cookie.createCookie();
+						else
+							cookie.analizeCookie(req.getInfo().cookie);
+						cookie.printClients();
 
-						if (controller.handleRequest(fd))
+						if (controller.handleRequest(fd, cookie.getClients()[0].info))
 							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}

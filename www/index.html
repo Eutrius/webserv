@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webserver Test Suite</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 40px;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .test-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      .test-card {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition:
+          transform 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+      .test-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      }
+      .test-card h3 {
+        margin-top: 0;
+        color: #ffd700;
+        border-bottom: 2px solid #ffd700;
+        padding-bottom: 10px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        text-decoration: none;
+        border-radius: 25px;
+        margin: 5px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+      .btn.get {
+        background: linear-gradient(45deg, #4ecdc4, #26de81);
+      }
+      .btn.post {
+        background: linear-gradient(45deg, #ffa726, #ff7043);
+      }
+      .btn.delete {
+        background: linear-gradient(45deg, #ef5350, #e53935);
+      }
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        background: #4caf50;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      .form-container {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        box-sizing: border-box;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .info-section {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 30px;
+      }
+      .cookie-display {
+        font-family: monospace;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1><span class="status-indicator"></span>Webserver Test Suite</h1>
+
+      <div class="test-grid">
+        <div class="test-card">
+          <h3>Basic HTTP Methods</h3>
+          <p>Test GET, POST, and DELETE methods on various endpoints.</p>
+          <a href="/files/" class="btn get">GET /files/</a>
+          <button onclick="testPost()" class="btn post">POST Test</button>
+          <button onclick="testDelete()" class="btn delete">DELETE Test</button>
+        </div>
+
+        <div class="test-card">
+          <h3>File Operations</h3>
+          <p>Upload files and browse directory listings.</p>
+          <a href="/upload/" class="btn get">Browse Uploads</a>
+          <a href="/files/" class="btn get">File Directory</a>
+          <button onclick="showUploadForm()" class="btn post">
+            Upload File
+          </button>
+        </div>
+
+        <div class="test-card">
+          <h3>CGI Scripts</h3>
+          <p>Test Common Gateway Interface functionality.</p>
+          <a href="/cgi-bin/info.py" class="btn get">Python CGI</a>
+          <a href="/cgi-bin/env.sh" class="btn get">Bash Environment</a>
+          <a href="/cgi-bin/form.py" class="btn get">CGI Form</a>
+        </div>
+
+        <div class="test-card">
+          <h3>Error Pages</h3>
+          <p>Test custom error page handling.</p>
+          <a href="/nonexistent" class="btn get">404 Error</a>
+          <a href="/protected/secret.html" class="btn get">403 Error</a>
+          <button onclick="trigger500()" class="btn delete">500 Error</button>
+        </div>
+
+        <div class="test-card">
+          <h3>Redirects</h3>
+          <p>Test redirect functionality.</p>
+          <a href="/root" class="btn get">Root</a>
+          <a href="/intra" class="btn get">Intra</a>
+          <a href="/google" class="btn get">Google</a>
+        </div>
+
+        <div class="test-card">
+          <h3>Content Types</h3>
+          <p>Test different MIME types and file serving.</p>
+          <a href="/files/test.txt" class="btn get">Text File</a>
+          <a href="/files/image.jpg" class="btn get">Image</a>
+          <a href="/files/data.json" class="btn get">JSON</a>
+          <a href="/files/style.css" class="btn get">CSS</a>
+        </div>
+      </div>
+
+      <div class="form-container" id="uploadForm" style="display: none">
+        <h3>File Upload Test</h3>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="file" accept="*/*" required />
+          <button type="submit" class="btn post">Upload File</button>
+        </form>
+      </div>
+
+      <div class="form-container">
+        <h3>POST Data Test</h3>
+        <form action="/cgi-bin/form.py" method="post">
+          <input type="text" name="username" placeholder="Username" required />
+          <input type="email" name="email" placeholder="Email" />
+          <textarea name="message" placeholder="Message" rows="4"></textarea>
+          <button type="submit" class="btn post">Submit Form</button>
+        </form>
+      </div>
+
+      <div class="info-section">
+        <h3>Current Session Info</h3>
+        <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+        <p><strong>Cookies:</strong></p>
+        <div class="cookie-display" id="cookieDisplay"></div>
+      </div>
+    </div>
+
+    <script>
+      // Display current session info
+      document.getElementById("userAgent").textContent = navigator.userAgent;
+      document.getElementById("currentUrl").textContent = window.location.href;
+      document.getElementById("cookieDisplay").textContent =
+        document.cookie || "No cookies set";
+
+      function showUploadForm() {
+        const form = document.getElementById("uploadForm");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+      }
+
+      async function testPost() {
+        try {
+          const response = await fetch("/uploads/test.txt", {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain",
+            },
+            body: "Test POST data from JavaScript",
+          });
+          alert(`POST response: ${response.status} ${response.statusText}`);
+        } catch (error) {
+          alert("POST request failed: " + error.message);
+        }
+      }
+
+      async function testDelete() {
+        if (confirm("Are you sure you want to test DELETE method?")) {
+          try {
+            const response = await fetch("/uploads/test.txt", {
+              method: "DELETE",
+            });
+            alert(`DELETE response: ${response.status} ${response.statusText}`);
+          } catch (error) {
+            alert("DELETE request failed: " + error.message);
+          }
+        }
+      }
+
+      async function trigger500() {
+        try {
+          const response = await fetch("/cgi-bin/error.py");
+          alert(`Response: ${response.status} ${response.statusText}`);
+        } catch (error) {
+          alert("Request failed: " + error.message);
+        }
+      }
+
+      document.cookie = "test_session=abc123; path=/; max-age=3600";
+    </script>
+  </body>
+</html>

@@ -29,6 +29,7 @@ void Cookie::createCookie(void)
 	Client new_client;
 
 	new_client.id = generateId();
+	new_client.info.append("sessionId=" + new_client.id + "; Max-Age=3600\r\n");
 	clients.push_back(new_client);
 }
 
@@ -85,16 +86,19 @@ int Cookie::findId(std::string line)
 	int pos;
 	int end;
 
-	pos = line.find("session_id=");
+	pos = line.find("sessionId=");
 	if (pos != -1)
 	{
-		end = line.find(";", pos);
 		if (pos == -1)
 			end = line.find("\n", pos);
-		id.append(line, pos + 11, end - pos - 12);
+		else
+			end = line.find(";", pos);
+		if (end == -1)
+			end = line.find(" ", pos);
+		id.append(line, pos + 10, end - pos - 10);
 		for (size_t i = 0; i < clients.size(); i++)
 			if (clients[i].id == id)
-				client = i;
+				return (i);
 		if (client == -1)
 		{
 			createCookie(id);
