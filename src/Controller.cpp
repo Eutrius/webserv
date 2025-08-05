@@ -205,7 +205,7 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 		{
 			try
 			{
-				newCGIConnection(outFD, fd, EPOLLOUT);
+				newCGIConnection(outFD, fd, EPOLLIN);
 				_epoll.modifyFd(fd, 0);
 				curr.res = res;
 				return (0);
@@ -257,6 +257,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 {
 	int outPipe[2];
 	int inPipe[2];
+
 	if (initPipes(outPipe, inPipe))
 	{
 		request.status = 500;
@@ -264,7 +265,8 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 	}
 
 	std::vector<char *> envp;
-	generateCGIEnv(envp, server, request, host);
+	std::vector<std::string> envStrings;
+	generateCGIEnv(envp, envStrings, server, request, host);
 
 	pid_t pid = fork();
 	if (pid == -1)
@@ -299,10 +301,20 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 
 		size_t dotPos = scriptPath.find_last_of('.');
 		std::string extension = scriptPath.substr(dotPos);
-		binary = server._rightServer.cgi_extension[extension];
+		// binary = server._rightServer.cgi_extension[extension];
+
+		if (extension == ".py")
+			binary = "/usr/bin/python3";
+		else if (extension == ".sh")
+			binary = "/usr/bin/bash";
+		else if (extension == ".php")
+			binary = "/usr/bin/php";
 
 		argv.push_back(const_cast<char *>(binary.c_str()));
-		argv.push_back(const_cast<char *>(scriptPath.c_str()));
+
+		std::string script = scriptPath.substr(scriptPath.find_last_of("/") + 1);
+
+		argv.push_back(const_cast<char *>(script.c_str()));
 		argv.push_back(NULL);
 
 		std::string scriptDir = scriptPath.substr(0, scriptPath.find_last_of('/'));
@@ -436,10 +448,9 @@ std::string Controller::normalizeEnvName(std::string headerName)
 	return (env);
 }
 
-void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host)
+void Controller::generateCGIEnv(std::vector<char *> &envp, std::vector<std::string> &envStrings, serverInfo &server,
+                                requestInfo &request, t_host host)
 {
-	std::vector<std::string> envStrings;
-
 	envStrings.push_back(std::string("REQUEST_METHOD=") + (request.method == GET ? "GET" : "POST"));
 	if (request.method == POST)
 	{
@@ -455,11 +466,12 @@ void Controller::generateCGIEnv(std::vector<char *> envp, serverInfo &server, re
 	envStrings.push_back("SERVER_NAME=" + request.hostname);
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
 	envStrings.push_back("REQUEST_URI=" + request.URI);
-	envStrings.push_back("REMOVE_ADDR=" + itoaIP(host.first));
+	envStrings.push_back("REMOTE_ADDR=" + itoaIP(host.first));
 
 	std::stringstream port;
 	port << host.second;
 	envStrings.push_back("SERVER_PORT=" + port.str());
+	std::cout << host.second << std::endl;
 
 	if (!request.formatAccepted.empty())
 		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);

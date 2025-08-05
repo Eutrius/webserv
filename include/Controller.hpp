@@ -65,7 +65,8 @@ class Controller
 
 	int initPipes(int inPipe[2], int outPipe[2]);
 	std::string extractAdditionalHeaders(std::string header);
-	void generateCGIEnv(std::vector<char *> envp, serverInfo &server, requestInfo &request, t_host host);
+	void generateCGIEnv(std::vector<char *> &envp, std::vector<std::string> &envStrings, serverInfo &server,
+	                    requestInfo &request, t_host host);
 	std::string normalizeEnvName(std::string headerName);
 	std::string itoaIP(int ip);
 

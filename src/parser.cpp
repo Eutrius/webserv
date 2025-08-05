@@ -513,7 +513,7 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 		if (tokens.size() != 3)
 			throw std::runtime_error(
 			    "\"cgi_extension\" directive takes 2 arguments: file extension and interpreter program");
-		if (tokens[1] != ".php" && tokens[1] != ".py")
+		if (tokens[1] != ".php" && tokens[1] != ".py" && tokens[1] != ".sh")
 			throw std::runtime_error("Unknown cgi_extension: \"" + tokens[1] + "\", valid only: .py .php");
 		if (result.find(tokens[1]) != result.end())
 			throw std::runtime_error(tokens[1] + " extension already set");

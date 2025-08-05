@@ -11,6 +11,7 @@ Socket::~Socket(void)
 Socket &Socket::operator=(const Socket &other)
 {
 	_fd = other._fd;
+	_host = other._host;
 	_servers = other._servers;
 	return (*this);
 }
