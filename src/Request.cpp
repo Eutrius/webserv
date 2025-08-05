@@ -174,8 +174,11 @@ void Request::checkCGI(void)
 		{
 			_requestInfo.isCGI = true;
 			pos = _requestInfo.URI.find("/", pos);
-			_requestInfo.cgiPath.append(_requestInfo.URI, pos);
-			_requestInfo.URI.erase(pos);
+			if (pos != std::string::npos)
+			{
+				_requestInfo.cgiPath.append(_requestInfo.URI, pos);
+				_requestInfo.URI.erase(pos);
+			}
 			break;
 		}
 		else
