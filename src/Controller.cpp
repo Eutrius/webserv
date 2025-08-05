@@ -149,7 +149,7 @@ Request &Controller::getRequestByFd(int fd)
 	return (_connections[fd].req);
 }
 
-int Controller::handleRequest(int fd)
+int Controller::handleRequest(int fd, std::string cookie)
 {
 	Connection &curr = _connections[fd];
 
@@ -199,6 +199,7 @@ int Controller::handleRequest(int fd)
 		{
 			if (res.handleGet(server, request, location))
 			{
+				res.appendHeader(cookie);
 				curr.writeBuffer = res.getCompleteResponse();
 				return (1);
 			}
