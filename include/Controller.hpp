@@ -1,7 +1,9 @@
 #pragma once
 
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <csignal>
 #include <ctime>
 #include <map>
 #include <string>
@@ -48,6 +50,8 @@ class Controller
 	con_type getConnectionTypeByFd(int fd);
 	Response &getResponseByFd(int fd);
 	Request &getRequestByFd(int fd);
+
+	bool isValidConnection(int fd);
 
 	int initServers(std::vector<Socket> &sockets);
 	void newClientConnection(int fd);

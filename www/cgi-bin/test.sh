@@ -3,6 +3,11 @@
 echo "Content-Type: text/html"
 echo ""
 
+while true; do
+    echo "Running forever..."
+    sleep 1
+done
+
 cat << 'EOF'
 <!DOCTYPE html>
 <html lang="en">

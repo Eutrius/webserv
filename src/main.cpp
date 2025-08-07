@@ -38,6 +38,8 @@ int main(int argc, char const *argv[])
 		int nEvents = epoll.wait();
 		struct epoll_event *events = epoll.getEvents();
 
+		controller.checkTimeouts();
+
 		for (int i = 0; i < nEvents; i++)
 		{
 			int fd = events[i].data.fd;
@@ -48,6 +50,9 @@ int main(int argc, char const *argv[])
 				controller.closeConnection(fd);
 				continue;
 			}
+
+			if (!controller.isValidConnection(fd))
+				continue;
 
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;

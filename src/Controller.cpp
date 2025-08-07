@@ -1,4 +1,6 @@
 #include "Controller.hpp"
+#include <csignal>
+#include <cstdlib>
 
 Controller::Controller(Epoll &epoll) : _epoll(epoll)
 {
@@ -11,6 +13,18 @@ Controller::~Controller(void)
 	{
 		std::map<int, Connection>::iterator curr = it++;
 		closeConnection(curr->first);
+	}
+
+	std::map<int, time_t>::iterator i;
+
+	for (i = _cgiConnections.begin(); i != _cgiConnections.end(); i++)
+	{
+		if (std::time(NULL) - i->second > CGI_TIMEOUT)
+		{
+			int status;
+			kill(i->first, SIGKILL);
+			waitpid(i->first, &status, WNOHANG);
+		}
 	}
 }
 
@@ -124,6 +138,19 @@ void Controller::checkTimeouts(void)
 				modifyConnection(it->first, EPOLLOUT);
 			}
 		}
+
+		if (curr.type & CON_CGI)
+		{
+			if (std::time(NULL) - curr.lastActivity > CGI_TIMEOUT + TIMEOUT)
+				closeConnection(it->first);
+		}
+	}
+
+	std::map<int, time_t>::iterator i;
+	for (i = _cgiConnections.begin(); i != _cgiConnections.end(); i++)
+	{
+		if (std::time(NULL) - i->second > CGI_TIMEOUT)
+			kill(i->first, SIGKILL);
 	}
 }
 
@@ -171,6 +198,11 @@ Response &Controller::getResponseByFd(int fd)
 Request &Controller::getRequestByFd(int fd)
 {
 	return (_connections[fd].req);
+}
+
+bool Controller::isValidConnection(int fd)
+{
+	return (_connections.find(fd) != _connections.end());
 }
 
 int Controller::handleRequest(int fd, std::vector<std::string> cookie)
@@ -289,13 +321,14 @@ int Controller::handleCGI(int fd)
 		size_t dotPos = scriptPath.find_last_of('.');
 		std::string extension = scriptPath.substr(dotPos);
 		// binary = server._rightServer.cgi_extension[extension];
+		//
 
 		if (extension == ".py")
 			binary = "/usr/bin/python3";
 		else if (extension == ".sh")
 			binary = "/usr/bin/bash";
 		else if (extension == ".php")
-			binary = "/usr/bin/php";
+			binary = "/usr/bin/php-cgi";
 
 		argv.push_back(const_cast<char *>(binary.c_str()));
 
@@ -350,6 +383,7 @@ int Controller::handleCGI(int fd)
 		catch (std::exception &e)
 		{
 			close(outPipe[0]);
+			kill(pid, SIGKILL);
 			request.status = 500;
 			std::cout << e.what() << std::endl;
 			return (0);
@@ -404,28 +438,40 @@ void Controller::handleCGIOutput(int fd)
 	requestInfo &request = req.getInfo();
 	Location location = server._rightServer.location[server.location];
 
-	std::string cgiOutput = curr.readBuffer;
+	int pid_status;
+	waitpid(curr.pid, &pid_status, WNOHANG);
+	if (WIFSIGNALED(pid_status) || pid_status == 1)
+	{
+		if (pid_status == 1)
+			request.status = 500;
+		else
+			request.status = 408;
+		res.setBody("");
+		res.handleError(server, request, location);
+		target.writeBuffer = res.getCompleteResponse();
+		modifyConnection(curr.targetFd, EPOLLOUT);
+		closeConnection(fd);
+		return;
+	}
 
+	std::string cgiOutput = curr.readBuffer;
 	size_t headerEndPos = cgiOutput.find("\r\n\r\n");
 	if (headerEndPos == std::string::npos)
 	{
 		headerEndPos = cgiOutput.find("\n\n");
 		if (headerEndPos == std::string::npos)
-		{
-			request.status = 500;
-			res.handleError(server, request, location);
-			target.writeBuffer = res.getCompleteResponse();
-			modifyConnection(curr.targetFd, EPOLLOUT);
-			closeConnection(fd);
-			return;
-		}
-		headerEndPos += 2;
+			headerEndPos = 0;
+		else
+			headerEndPos += 2;
 	}
 	else
 		headerEndPos += 4;
 
 	std::string header = cgiOutput.substr(0, headerEndPos);
 	std::string body = cgiOutput.substr(headerEndPos);
+	std::cout << cgiOutput << std::endl;
+	std::cout << "HEADER: " << header << std::endl;
+	std::cout << "BODY:" << body << std::endl;
 
 	std::string contentType = findInfo(header, "Content-Type");
 	if (contentType.empty())
@@ -469,13 +515,15 @@ void Controller::generateCGIEnv(std::vector<char *> &envp, std::vector<std::stri
 			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
 	}
 	envStrings.push_back("QUERY_STRING=" + request.query);
-	envStrings.push_back("SCRIPT_NAME=" + server.link);
+	std::string script = server.link.substr(server.link.find_last_of("/") + 1);
+	envStrings.push_back("SCRIPT_FILENAME=" + script);
 	if (!request.cgiPath.empty())
 		envStrings.push_back("PATH_INFO=" + request.cgiPath);
 	envStrings.push_back("SERVER_NAME=" + server._rightServer.server_name[0]);
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
 	envStrings.push_back("REQUEST_URI=" + request.URI);
 	envStrings.push_back("REMOTE_ADDR=" + itoaIP(host.first));
+	envStrings.push_back("REDIRECT_STATUS=CGI");
 
 	std::stringstream port;
 	port << host.second;

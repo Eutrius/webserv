@@ -54,7 +54,7 @@ int Epoll::wait(void)
 {
 	int nEvents;
 
-	nEvents = epoll_wait(this->_epollFd, _events, 1024, -1);
+	nEvents = epoll_wait(this->_epollFd, _events, 1024, 1000);
 	if (nEvents == -1)
 	{
 		if (errno == EINTR)
