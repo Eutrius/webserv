@@ -184,8 +184,7 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	serverInfo &server = curr.req.getServerInfo();
 	requestInfo &request = curr.req.getInfo();
 	Location location = server._rightServer.location[server.location];
-
-	Response res;
+	Response &res = curr.res;
 
 	if (request.isRedirect)
 	{
@@ -199,23 +198,8 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 
 	if (request.isCGI)
 	{
-		int outFD = handleCGI(server, request, curr.socket.getHost());
-		if (outFD)
-		{
-			try
-			{
-				newCGIConnection(outFD, fd, EPOLLIN);
-				_epoll.modifyFd(fd, 0);
-				curr.res = res;
-				return (0);
-			}
-			catch (std::exception &e)
-			{
-				close(outFD);
-				request.status = 500;
-				std::cout << e.what() << std::endl;
-			}
-		}
+		if (handleCGI(fd))
+			return (0);
 	}
 	else if (request.status == 200)
 	{
@@ -252,8 +236,12 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	return (1);
 }
 
-int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
+int Controller::handleCGI(int fd)
 {
+	Connection &curr = _connections[fd];
+	serverInfo &server = curr.req.getServerInfo();
+	requestInfo &request = curr.req.getInfo();
+
 	int outPipe[2];
 	int inPipe[2];
 
@@ -265,7 +253,7 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 
 	std::vector<char *> envp;
 	std::vector<std::string> envStrings;
-	generateCGIEnv(envp, envStrings, server, request, host);
+	generateCGIEnv(envp, envStrings, server, request, curr.socket.getHost());
 
 	pid_t pid = fork();
 	if (pid == -1)
@@ -336,9 +324,11 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 			try
 			{
 				newCGIConnection(inPipe[1], 0, EPOLLOUT);
-				Connection &curr = getConnection(inPipe[1]);
-				curr.sent = 0;
-				curr.writeBuffer = request.body;
+				Connection &cgi = getConnection(inPipe[1]);
+				cgi.pid = pid;
+				cgi.sent = 0;
+				cgi.lastActivity = std::time(NULL);
+				cgi.writeBuffer = request.body;
 			}
 			catch (std::exception &e)
 			{
@@ -349,8 +339,24 @@ int Controller::handleCGI(serverInfo &server, requestInfo &request, t_host host)
 		else
 			close(inPipe[1]);
 
+		try
+		{
+			newCGIConnection(outPipe[0], fd, EPOLLIN);
+			Connection &cgi = getConnection(outPipe[0]);
+			cgi.pid = pid;
+			cgi.lastActivity = std::time(NULL);
+			_epoll.modifyFd(fd, 0);
+		}
+		catch (std::exception &e)
+		{
+			close(outPipe[0]);
+			request.status = 500;
+			std::cout << e.what() << std::endl;
+			return (0);
+		}
+
 		_cgiConnections[pid] = std::time(NULL);
-		return (outPipe[0]);
+		return (1);
 	}
 }
 
@@ -394,6 +400,9 @@ void Controller::handleCGIOutput(int fd)
 	Connection &target = getConnection(curr.targetFd);
 	Response &res = getResponseByFd(curr.targetFd);
 	Request &req = getRequestByFd(curr.targetFd);
+	serverInfo &server = req.getServerInfo();
+	requestInfo &request = req.getInfo();
+	Location location = server._rightServer.location[server.location];
 
 	std::string cgiOutput = curr.readBuffer;
 
@@ -403,7 +412,8 @@ void Controller::handleCGIOutput(int fd)
 		headerEndPos = cgiOutput.find("\n\n");
 		if (headerEndPos == std::string::npos)
 		{
-			res.generateHeader(500, req.getServerInfo().link, req.getServerInfo().location);
+			request.status = 500;
+			res.handleError(server, request, location);
 			target.writeBuffer = res.getCompleteResponse();
 			modifyConnection(curr.targetFd, EPOLLOUT);
 			closeConnection(fd);

@@ -1,5 +1,4 @@
 #include "Response.hpp"
-#include "Controller.hpp"
 
 Response::Response(void)
 {
@@ -87,7 +86,7 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 			}
 			if (location.autoindex)
 			{
-				request.status = generateAutoindex(server.link, request.URI);
+				request.status = generateAutoindex(server.link, server.location);
 				if (request.status == 200)
 				{
 					generateHeader(request.status, "text/html", server.location);
@@ -124,7 +123,12 @@ int Response::handlePost(requestInfo &request, Location &location)
 		if (uploadPath[uploadPath.size() - 1] != '/')
 			uploadPath += '/';
 
-		std::string filename = request.filename;
+		std::string filename;
+		if (request.filename.empty())
+			filename = request.URI.substr(request.URI.find_last_of("/"));
+		else
+			filename = request.filename;
+
 		if (filename.empty())
 			filename = "file";
 
@@ -185,7 +189,7 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 {
 	std::ostringstream header;
 	header << "HTTP/1.1 " << statusCode << " " << getStatusMessage(statusCode) << "\r\n";
-	header << "Server: " << SERVER_NAME << "\r\n";
+	header << "Server: " << "Ngin42/1.0" << "\r\n";
 	header << "Date: " << generateDate() << "\r\n";
 
 	if (!_body.empty())
@@ -198,20 +202,20 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 		header << "Location: " << location << "\r\n";
 
 	header << "Connection: close\r\n";
-	_header = header.str();
+	_header += header.str();
 }
 
-int Response::generateAutoindex(std::string path, std::string uri)
+int Response::generateAutoindex(std::string path, std::string location)
 {
 	DIR *dir = opendir(path.c_str());
 	if (!dir)
 		return (500);
 
 	std::ostringstream html;
-	html << "<!DOCTYPE html>\n<html>\n<head>\n<title>" << uri << "</title>\n</head>\n<body>\n";
-	html << "<h1>Directory listing for " << uri << "</h1>\n<ul>\n";
+	html << "<!DOCTYPE html>\n<html>\n<head>\n<title>" << location << "</title>\n</head>\n<body>\n";
+	html << "<h1>Directory listing for " << location << "</h1>\n<ul>\n";
 
-	if (uri != "/")
+	if (location != "/")
 		html << "<li><a href=\"../\">../</a></li>\n";
 
 	struct dirent *entry;

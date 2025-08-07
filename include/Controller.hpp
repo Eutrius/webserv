@@ -15,7 +15,6 @@
 #define BUFFER_SIZE 8192
 #define TIMEOUT 15
 #define CGI_TIMEOUT 30
-#define SERVER_NAME "Ngin42/1.0"
 
 enum con_type
 {
@@ -59,7 +58,7 @@ class Controller
 	void checkTimeouts(void);
 
 	int handleRequest(int fd, std::vector<std::string> cookie);
-	int handleCGI(serverInfo &server, requestInfo &request, t_host host);
+	int handleCGI(int fd);
 	void handleCGIOutput(int fd);
 	int read(int fd);
 	int write(int fd);

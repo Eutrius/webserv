@@ -23,7 +23,7 @@ class Response
 	void appendHeader(std::string addtionalHeader);
 	void defaultHtmlBody(int statusCode);
 	void generateHeader(int statusCode, std::string contentType, std::string location);
-	int generateAutoindex(std::string path, std::string uri);
+	int generateAutoindex(std::string path, std::string location);
 	std::string generateDate(void);
 	int handleFile(std::string path);
 	void handleError(serverInfo &server, requestInfo &request, Location &location);
