@@ -217,6 +217,8 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	requestInfo &request = curr.req.getInfo();
 	Location location = server._rightServer.location[server.location];
 	Response &res = curr.res;
+	for (size_t i = 0; i < cookie.size(); i++)
+		res.appendHeader("Set-Cookie: " + cookie[i]);
 
 	if (request.isRedirect)
 	{
@@ -239,8 +241,6 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 		{
 			if (res.handleGet(server, request, location))
 			{
-				for (size_t i = 0; i < cookie.size(); i++)
-					res.appendHeader("Set-Cookie: " + cookie[i]);
 				curr.writeBuffer = res.getCompleteResponse();
 				return (1);
 			}

@@ -202,7 +202,7 @@ void Response::generateHeader(int statusCode, std::string contentType, std::stri
 		header << "Location: " << location << "\r\n";
 
 	header << "Connection: close\r\n";
-	_header += header.str();
+	_header = header.str() + _header;
 }
 
 int Response::generateAutoindex(std::string path, std::string location)
