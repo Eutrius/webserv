@@ -500,7 +500,7 @@ std::string findInfo(std::string request, std::string toFind)
 	begin = pos + toFind.length();
 	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n')
 		begin++;
-	if (request[begin] == '\r' || request[begin] == '\n')
+	if (request[begin] == '\r' || request[begin] == '\n' || !request[begin])
 		return ("");
 	end = begin + 1;
 	while (request[end] != ' ' && request[end] != '\n' && request[end] != '\r')

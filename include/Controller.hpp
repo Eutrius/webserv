@@ -55,7 +55,7 @@ class Controller
 	void modifyConnection(int fd, int event);
 	void checkTimeouts(void);
 
-	int handleRequest(int fd, std::string cookie);
+	int handleRequest(int fd, std::vector<std::string> cookie);
 	int handleCGI(serverInfo &server, requestInfo &request, t_host host);
 	void handleCGIOutput(int fd);
 	int read(int fd);

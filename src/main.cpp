@@ -76,7 +76,7 @@ int main(int argc, char const *argv[])
 							cookie.analizeCookie(req.getInfo().cookie);
 						cookie.printClients();
 
-						if (controller.handleRequest(fd, cookie.getClients()[0].info))
+						if (controller.handleRequest(fd, cookie.getClients()[cookie.getCurrentClient()].info))
 							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}
