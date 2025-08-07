@@ -110,18 +110,18 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 {
 	if (argc != 2)
 	{
-		std::cerr << "error1\n";
+		std::cerr << "The program requires a server configuration file as an argument\n";
 		return (false);
 	}
 	if (std::strlen(argv[1]) < 5 || std::strcmp(argv[1] + std::strlen(argv[1]) - 5, ".conf"))
 	{
-		std::cerr << "error2\n";
+		std::cerr << "Configuration file must have a .conf extension\n";
 		return (false);
 	}
 	std::ifstream file(argv[1]);
 	if (!file)
 	{
-		std::cerr << "error3\n";
+		std::cerr << "Failed to read configuration file\n";
 		return (false);
 	}
 	std::vector<Server> servers;
