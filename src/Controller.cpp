@@ -1,6 +1,4 @@
 #include "Controller.hpp"
-#include <csignal>
-#include <cstdlib>
 
 Controller::Controller(Epoll &epoll) : _epoll(epoll)
 {
@@ -218,6 +216,7 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	requestInfo &request = curr.req.getInfo();
 	Location location = server._rightServer.location[server.location];
 	Response &res = curr.res;
+
 	for (size_t i = 0; i < cookie.size(); i++)
 		if (!cookie[i].empty())
 			res.appendHeader("Set-Cookie: " + cookie[i]);
@@ -275,6 +274,19 @@ int Controller::handleCGI(int fd)
 	Connection &curr = _connections[fd];
 	serverInfo &server = curr.req.getServerInfo();
 	requestInfo &request = curr.req.getInfo();
+	Location location = server._rightServer.location[server.location];
+
+	std::string fullPath = server.link;
+	std::string extension = fullPath.substr(fullPath.find_last_of('.'));
+	std::string binary = location.cgi_extension[extension];
+	std::string scriptName = fullPath.substr(fullPath.find_last_of("/") + 1);
+	std::string parentDir = fullPath.substr(0, fullPath.find_last_of('/'));
+
+	if (binary.empty())
+	{
+		request.status = 403;
+		return (0);
+	}
 
 	int outPipe[2];
 	int inPipe[2];
@@ -317,32 +329,13 @@ int Controller::handleCGI(int fd)
 		close(inPipe[0]);
 
 		std::vector<char *> argv;
-		std::string scriptPath = server.link;
-		std::string binary;
-
-		size_t dotPos = scriptPath.find_last_of('.');
-		std::string extension = scriptPath.substr(dotPos);
-		// binary = server._rightServer.cgi_extension[extension];
-		//
-
-		if (extension == ".py")
-			binary = "/usr/bin/python3";
-		else if (extension == ".sh")
-			binary = "/usr/bin/bash";
-		else if (extension == ".php")
-			binary = "/usr/bin/php-cgi";
-
 		argv.push_back(const_cast<char *>(binary.c_str()));
-
-		std::string script = scriptPath.substr(scriptPath.find_last_of("/") + 1);
-
-		argv.push_back(const_cast<char *>(script.c_str()));
+		argv.push_back(const_cast<char *>(scriptName.c_str()));
 		argv.push_back(NULL);
 
-		std::string scriptDir = scriptPath.substr(0, scriptPath.find_last_of('/'));
-		if (!scriptDir.empty())
+		if (!parentDir.empty())
 		{
-			if (chdir(scriptDir.c_str()) == -1)
+			if (chdir(parentDir.c_str()) == -1)
 				std::exit(1);
 		}
 
@@ -436,18 +429,20 @@ void Controller::handleCGIOutput(int fd)
 	Connection &target = getConnection(curr.targetFd);
 	Response &res = getResponseByFd(curr.targetFd);
 	Request &req = getRequestByFd(curr.targetFd);
+
 	serverInfo &server = req.getServerInfo();
 	requestInfo &request = req.getInfo();
 	Location location = server._rightServer.location[server.location];
 
 	int pid_status;
 	waitpid(curr.pid, &pid_status, WNOHANG);
-	if (WIFSIGNALED(pid_status) || pid_status == 1)
+	if (WIFSIGNALED(pid_status) || (WIFEXITED(pid_status) && WEXITSTATUS(pid_status)))
 	{
-		if (pid_status == 1)
+		if (WEXITSTATUS(pid_status))
 			request.status = 500;
 		else
 			request.status = 408;
+
 		res.setBody("");
 		res.handleError(server, request, location);
 		target.writeBuffer = res.getCompleteResponse();
@@ -471,16 +466,18 @@ void Controller::handleCGIOutput(int fd)
 
 	std::string header = cgiOutput.substr(0, headerEndPos);
 	std::string body = cgiOutput.substr(headerEndPos);
-	std::cout << cgiOutput << std::endl;
-	std::cout << "HEADER: " << header << std::endl;
-	std::cout << "BODY:" << body << std::endl;
 
 	std::string contentType = findInfo(header, "Content-Type");
 	if (contentType.empty())
 		contentType = "text/html";
 
 	std::string status = findInfo(header, "Status");
-	int statusCode = status.empty() ? 200 : std::atoi(status.c_str());
+	int statusCode;
+	if (status.empty())
+		statusCode = 200;
+	else
+		statusCode = std::atoi(status.c_str());
+
 	std::string additionalHeaders = extractAdditionalHeaders(header);
 
 	res.setBody(body);

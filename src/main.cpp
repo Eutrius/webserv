@@ -144,11 +144,13 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 
 	file.close();
+	printServers(servers);
 	return (true);
 }
 
 static void handleSignal(int signal)
 {
 	(void) signal;
+	std::cout << "\n";
 	serverState = 0;
 }
