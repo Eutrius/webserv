@@ -279,8 +279,6 @@ int Controller::handleCGI(int fd)
 	std::string fullPath = server.link;
 	std::string extension = fullPath.substr(fullPath.find_last_of('.'));
 	std::string binary = location.cgi_extension[extension];
-	std::string scriptName = fullPath.substr(fullPath.find_last_of("/") + 1);
-	std::string parentDir = fullPath.substr(0, fullPath.find_last_of('/'));
 
 	if (binary.empty())
 	{
@@ -297,17 +295,36 @@ int Controller::handleCGI(int fd)
 		return (0);
 	}
 
+	try
+	{
+		if (request.method == POST && !request.body.empty())
+			newCGIConnection(inPipe[1], 0, EPOLLOUT);
+		newCGIConnection(outPipe[0], fd, EPOLLIN);
+		_epoll.modifyFd(fd, 0);
+	}
+	catch (std::exception &e)
+	{
+		closeConnection(inPipe[1]);
+		closeConnection(outPipe[0]);
+		close(outPipe[1]);
+		close(inPipe[0]);
+		request.status = 500;
+		return (0);
+	}
+
 	std::vector<char *> envp;
 	std::vector<std::string> envStrings;
+	std::string scriptName = fullPath.substr(fullPath.find_last_of("/") + 1);
+	std::string parentDir = fullPath.substr(0, fullPath.find_last_of('/'));
 	generateCGIEnv(envp, envStrings, server, request, curr.socket.getHost());
 
 	pid_t pid = fork();
 	if (pid == -1)
 	{
-		close(outPipe[0]);
+		closeConnection(inPipe[1]);
+		closeConnection(outPipe[0]);
 		close(outPipe[1]);
 		close(inPipe[0]);
-		close(inPipe[1]);
 		request.status = 500;
 		return (0);
 	}
@@ -346,45 +363,20 @@ int Controller::handleCGI(int fd)
 	{
 		close(outPipe[1]);
 		close(inPipe[0]);
+		_cgiConnections[pid] = std::time(NULL);
 
 		if (request.method == POST && !request.body.empty())
 		{
-			try
-			{
-				newCGIConnection(inPipe[1], 0, EPOLLOUT);
-				Connection &cgi = getConnection(inPipe[1]);
-				cgi.pid = pid;
-				cgi.sent = 0;
-				cgi.lastActivity = std::time(NULL);
-				cgi.writeBuffer = request.body;
-			}
-			catch (std::exception &e)
-			{
-				close(inPipe[1]);
-				std::cout << e.what() << std::endl;
-			}
+			Connection &cgiInput = getConnection(inPipe[1]);
+			cgiInput.pid = pid;
+			cgiInput.sent = 0;
+			cgiInput.writeBuffer = request.body;
 		}
 		else
 			close(inPipe[1]);
 
-		try
-		{
-			newCGIConnection(outPipe[0], fd, EPOLLIN);
-			Connection &cgi = getConnection(outPipe[0]);
-			cgi.pid = pid;
-			cgi.lastActivity = std::time(NULL);
-			_epoll.modifyFd(fd, 0);
-		}
-		catch (std::exception &e)
-		{
-			close(outPipe[0]);
-			kill(pid, SIGKILL);
-			request.status = 500;
-			std::cout << e.what() << std::endl;
-			return (0);
-		}
-
-		_cgiConnections[pid] = std::time(NULL);
+		Connection &cgiOutput = getConnection(outPipe[0]);
+		cgiOutput.pid = pid;
 		return (1);
 	}
 }
@@ -443,6 +435,7 @@ void Controller::handleCGIOutput(int fd)
 		else
 			request.status = 408;
 
+		_cgiConnections.erase(curr.pid);
 		res.setBody("");
 		res.handleError(server, request, location);
 		target.writeBuffer = res.getCompleteResponse();
