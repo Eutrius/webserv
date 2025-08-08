@@ -21,7 +21,7 @@ Controller::~Controller(void)
 		{
 			int status;
 			kill(i->first, SIGKILL);
-			waitpid(i->first, &status, WNOHANG);
+			waitpid(i->first, &status, 0);
 		}
 	}
 }
