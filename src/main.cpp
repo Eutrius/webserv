@@ -52,21 +52,15 @@ int main(int argc, char const *argv[])
 			}
 
 			if (!controller.isValidConnection(fd))
+			{
+				controller.closeConnection(fd);
 				continue;
+			}
 
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;
 
-			if (eventFlags & EPOLLHUP)
-			{
-				if ((type & CON_CGI) && ((eventFlags & EPOLLHUP)))
-				{
-					controller.handleCGIOutput(fd);
-					continue;
-				}
-				controller.closeConnection(fd);
-			}
-			else if (eventFlags & EPOLLIN)
+			if (eventFlags & (EPOLLIN | EPOLLHUP))
 			{
 				if (type & CON_SERVER)
 				{
@@ -74,9 +68,18 @@ int main(int argc, char const *argv[])
 					continue;
 				}
 
+				if (eventFlags & EPOLLHUP && type & CON_CLIENT)
+				{
+					controller.closeConnection(fd);
+					continue;
+				}
+
 				int bytesRead = controller.read(fd);
 				if (bytesRead == -1)
+				{
+					controller.closeConnection(fd);
 					continue;
+				}
 
 				if (type & CON_CLIENT)
 				{
@@ -87,16 +90,23 @@ int main(int argc, char const *argv[])
 							cookie.createCookie();
 						else
 							cookie.analizeCookie(req.getInfo().cookie);
-						cookie.printClients();
 
 						if (controller.handleRequest(fd, cookie.getClients()[cookie.getCurrentClient()].info))
 							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}
+				else if (type & CON_CGI && bytesRead == 0)
+					controller.handleCGIOutput(fd);
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
 				int bytesSent = controller.write(fd);
+				if (bytesSent == -1)
+				{
+					controller.closeConnection(fd);
+					continue;
+				}
+
 				if (type & CON_CLIENT)
 				{
 					if (curr.sent >= curr.writeBuffer.length())

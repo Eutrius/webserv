@@ -208,7 +208,6 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	Connection &curr = _connections[fd];
 
 	Request req(curr.readBuffer, curr.socket.getServers());
-	req.printInfoRequest();
 	curr.req = req;
 
 	(void) cookie;
@@ -478,6 +477,7 @@ void Controller::handleCGIOutput(int fd)
 	res.appendHeader(additionalHeaders);
 	target.writeBuffer = res.getCompleteResponse();
 	modifyConnection(curr.targetFd, EPOLLOUT);
+	_cgiConnections.erase(curr.pid);
 	closeConnection(fd);
 }
 
