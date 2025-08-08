@@ -28,24 +28,18 @@ int Response::handleFile(std::string path)
 
 void Response::handleError(serverInfo &server, requestInfo &request, Location &location)
 {
-	int err = 0;
 	std::string errorFile = location.error_page[request.status];
 	if (!errorFile.empty())
 	{
-		if (checkFile(errorFile, err))
+		if (checkFile(errorFile))
 		{
-			if (handleFile(errorFile))
-				request.status = 403;
-			else
+			if (!handleFile(errorFile))
 			{
 				generateHeader(request.status, "text/html", server.location);
 				return;
 			}
 		}
-		else if (err == EACCES)
-			request.status = 403;
-		else
-			request.status = 404;
+		request.status = getErrnoHttpStatus(errno);
 	}
 	defaultHtmlBody(request.status);
 	return;
@@ -53,8 +47,7 @@ void Response::handleError(serverInfo &server, requestInfo &request, Location &l
 
 int Response::handleGet(serverInfo &server, requestInfo &request, Location &location)
 {
-	int err = 0;
-	if (checkFile(server.link, err))
+	if (checkFile(server.link))
 	{
 		if (isDirectory(server.link))
 		{
@@ -73,50 +66,44 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 			for (size_t i = 0; i < location.index.size(); i++)
 			{
 				std::string path = link + location.index[i];
-				if (checkFile(path, err) && !isDirectory(path))
+				if (checkFile(path) && !isDirectory(path))
 				{
-					if (handleFile(path))
-						request.status = 403;
-					else
+					if (!handleFile(path))
 					{
 						generateHeader(request.status, getMimeType(path), server.location);
 						return (1);
 					}
 				}
 			}
+
 			if (location.autoindex)
 			{
-				request.status = generateAutoindex(server.link, server.location);
-				if (request.status == 200)
+				if (!generateAutoindex(server.link, server.location))
 				{
 					generateHeader(request.status, "text/html", server.location);
 					return (1);
 				}
+				request.status = getErrnoHttpStatus(errno);
 			}
 			else
 				request.status = 403;
+			return (0);
 		}
 		else
 		{
-			if (handleFile(server.link))
-				request.status = 403;
-			else
+			if (!handleFile(server.link))
 			{
 				generateHeader(request.status, getMimeType(server.link), server.location);
 				return (1);
 			}
 		}
 	}
-	else if (err == EACCES)
-		request.status = 403;
-	else
-		request.status = 404;
+	request.status = getErrnoHttpStatus(errno);
 	return (0);
 }
 
 int Response::handlePost(requestInfo &request, Location &location)
 {
-	int err = 0;
 	if (!location.upload_dir.empty())
 	{
 		std::string uploadPath = location.upload_dir;
@@ -125,7 +112,7 @@ int Response::handlePost(requestInfo &request, Location &location)
 
 		std::string filename;
 		if (request.filename.empty())
-			filename = request.URI.substr(request.URI.find_last_of("/"));
+			filename = request.URI.substr(request.URI.find_last_of("/") + 1);
 		else
 			filename = request.filename;
 
@@ -134,14 +121,7 @@ int Response::handlePost(requestInfo &request, Location &location)
 
 		std::string fullPath = uploadPath + filename;
 
-		if (!checkFile(uploadPath, err) || !isDirectory(uploadPath))
-		{
-			if (err == EACCES)
-				request.status = 403;
-			else
-				request.status = 404;
-		}
-		else
+		if (checkFile(uploadPath) && isDirectory(uploadPath))
 		{
 			std::ofstream file(fullPath.c_str(), std::ios::binary);
 			if (file.is_open())
@@ -151,9 +131,8 @@ int Response::handlePost(requestInfo &request, Location &location)
 				request.status = 201;
 				return (0);
 			}
-			else
-				request.status = 500;
 		}
+		request.status = getErrnoHttpStatus(errno);
 	}
 	else
 		request.status = 403;
@@ -162,21 +141,15 @@ int Response::handlePost(requestInfo &request, Location &location)
 
 int Response::handleDelete(serverInfo &server, requestInfo &request)
 {
-	int err = 0;
-	if (checkFile(server.link, err))
+	if (checkFile(server.link))
 	{
 		if (unlink(server.link.c_str()) == 0)
 		{
 			generateHeader(204, "", "");
 			return (1);
 		}
-		else
-			request.status = 403;
 	}
-	else if (err == EACCES)
-		request.status = 403;
-	else
-		request.status = 404;
+	request.status = getErrnoHttpStatus(errno);
 	return (0);
 }
 
@@ -209,7 +182,7 @@ int Response::generateAutoindex(std::string path, std::string location)
 {
 	DIR *dir = opendir(path.c_str());
 	if (!dir)
-		return (500);
+		return (1);
 
 	std::ostringstream html;
 	html << "<!DOCTYPE html>\n<html>\n<head>\n<title>" << location << "</title>\n</head>\n<body>\n";
@@ -235,7 +208,7 @@ int Response::generateAutoindex(std::string path, std::string location)
 	html << "</ul>\n</body>\n</html>";
 	closedir(dir);
 	_body = html.str();
-	return (200);
+	return (0);
 }
 
 std::string Response::generateDate(void)
@@ -274,6 +247,38 @@ void Response::setBody(std::string body)
 void Response::appendHeader(std::string addtionalHeader)
 {
 	_header += addtionalHeader;
+}
+
+int Response::getErrnoHttpStatus(int err)
+{
+	switch (err)
+	{
+		case EACCES:
+		case EPERM:
+			return (403);
+
+		case ENOENT:
+			return (404);
+
+		case EISDIR:
+		case EEXIST:
+			return (409);
+
+		case ENOTSUP:
+			return (501);
+
+		case EMFILE:
+		case ENFILE:
+			return (503);
+
+		case ENOSPC:
+		case EDQUOT:
+		case ENOMEM:
+			return (507);
+
+		default:
+			return (500);
+	}
 }
 
 std::string Response::getMimeType(std::string filename)
@@ -444,12 +449,11 @@ std::string Response::getStatusMessage(int statusCode)
 	}
 }
 
-bool Response::checkFile(std::string path, int &err)
+bool Response::checkFile(std::string path)
 {
 	struct stat st;
 	if (stat(path.c_str(), &st) == 0)
 		return (true);
-	err = errno;
 	return (false);
 }
 
