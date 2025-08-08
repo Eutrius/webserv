@@ -57,7 +57,16 @@ int main(int argc, char const *argv[])
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;
 
-			if (eventFlags & (EPOLLIN | EPOLLHUP))
+			if (eventFlags & EPOLLHUP)
+			{
+				if ((type & CON_CGI) && ((eventFlags & EPOLLHUP)))
+				{
+					controller.handleCGIOutput(fd);
+					continue;
+				}
+				controller.closeConnection(fd);
+			}
+			else if (eventFlags & EPOLLIN)
 			{
 				if (type & CON_SERVER)
 				{
@@ -73,9 +82,7 @@ int main(int argc, char const *argv[])
 				{
 					if (checkBody(curr.readBuffer))
 					{
-						std::cout << curr.readBuffer << std::endl;
 						Request req(curr.readBuffer, curr.socket.getServers());
-
 						if (req.getInfo().newClient == true)
 							cookie.createCookie();
 						else
@@ -86,8 +93,6 @@ int main(int argc, char const *argv[])
 							controller.modifyConnection(fd, EPOLLOUT);
 					}
 				}
-				else if (type & CON_CGI && bytesRead == 0)
-					controller.handleCGIOutput(fd);
 			}
 			else if (eventFlags & EPOLLOUT)
 			{
