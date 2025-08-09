@@ -458,6 +458,7 @@ void Controller::handleCGIOutput(int fd)
 
 	std::string header = cgiOutput.substr(0, headerEndPos);
 	std::string body = cgiOutput.substr(headerEndPos);
+	std::string additionalHeaders = extractAdditionalHeaders(header);
 
 	std::string contentType = findInfo(header, "Content-Type");
 	if (contentType.empty())
@@ -470,12 +471,11 @@ void Controller::handleCGIOutput(int fd)
 	else
 		statusCode = std::atoi(status.c_str());
 
-	std::string additionalHeaders = extractAdditionalHeaders(header);
-
 	res.setBody(body);
 	res.generateHeader(statusCode, contentType, req.getServerInfo().location);
 	res.appendHeader(additionalHeaders);
 	target.writeBuffer = res.getCompleteResponse();
+
 	modifyConnection(curr.targetFd, EPOLLOUT);
 	_cgiConnections.erase(curr.pid);
 	closeConnection(fd);
@@ -499,27 +499,39 @@ void Controller::generateCGIEnv(std::vector<char *> &envp, std::vector<std::stri
                                 requestInfo &request, t_host host)
 {
 	envStrings.push_back(std::string("REQUEST_METHOD=") + (request.method == GET ? "GET" : "POST"));
-	if (request.method == POST)
-	{
-		if (!request.contentType.empty())
-			envStrings.push_back("CONTENT_TYPE=" + request.contentType);
-		if (!request.contentLength.empty())
-			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
-	}
 	envStrings.push_back("QUERY_STRING=" + request.query);
-	std::string script = server.link.substr(server.link.find_last_of("/") + 1);
-	envStrings.push_back("SCRIPT_FILENAME=" + script);
-	if (!request.cgiPath.empty())
-		envStrings.push_back("PATH_INFO=" + request.cgiPath);
 	envStrings.push_back("SERVER_NAME=" + server._rightServer.server_name[0]);
 	envStrings.push_back("SERVER_PROTOCOL=" + request.protocol);
 	envStrings.push_back("REQUEST_URI=" + request.URI);
 	envStrings.push_back("REMOTE_ADDR=" + itoaIP(host.first));
 	envStrings.push_back("REDIRECT_STATUS=CGI");
 
+	if (request.method == POST)
+	{
+		if (!request.contentType.empty())
+			envStrings.push_back("CONTENT_TYPE=" + request.contentType);
+		else
+			envStrings.push_back("CONTENT_TYPE=application/octet-stream");
+
+		if (!request.contentLength.empty())
+			envStrings.push_back("CONTENT_LENGTH=" + request.contentLength);
+		else
+		{
+			std::stringstream contentLength;
+			contentLength << request.body.size();
+			envStrings.push_back("CONTENT_LENGTH=" + contentLength.str());
+		}
+	}
+
 	std::stringstream port;
 	port << host.second;
 	envStrings.push_back("SERVER_PORT=" + port.str());
+
+	std::string script = server.link.substr(server.link.find_last_of("/") + 1);
+	envStrings.push_back("SCRIPT_FILENAME=" + script);
+
+	if (!request.cgiPath.empty())
+		envStrings.push_back("PATH_INFO=" + request.cgiPath);
 
 	if (!request.formatAccepted.empty())
 		envStrings.push_back("HTTP_ACCEPT=" + request.formatAccepted);
@@ -569,6 +581,11 @@ std::string Controller::extractAdditionalHeaders(std::string header)
 std::string Controller::itoaIP(int ip)
 {
 	std::stringstream ipStr;
-	ipStr << ((ip >> 24) & 0xFF) << '.' << ((ip >> 16) & 0xFF) << '.' << ((ip >> 8) & 0xFF) << '.' << (ip & 0xFF);
+
+	ipStr << ((ip >> 24) & 0xFF) << '.';
+	ipStr << ((ip >> 16) & 0xFF) << '.';
+	ipStr << ((ip >> 8) & 0xFF) << '.';
+	ipStr << (ip & 0xFF);
+
 	return (ipStr.str());
 }

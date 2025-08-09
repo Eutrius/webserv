@@ -45,13 +45,7 @@ int main(int argc, char const *argv[])
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
 
-			if (eventFlags & EPOLLERR)
-			{
-				controller.closeConnection(fd);
-				continue;
-			}
-
-			if (!controller.isValidConnection(fd))
+			if (eventFlags & EPOLLERR || !controller.isValidConnection(fd))
 			{
 				controller.closeConnection(fd);
 				continue;
@@ -76,12 +70,8 @@ int main(int argc, char const *argv[])
 
 				int bytesRead = controller.read(fd);
 				if (bytesRead == -1)
-				{
 					controller.closeConnection(fd);
-					continue;
-				}
-
-				if (type & CON_CLIENT)
+				else if (type & CON_CLIENT)
 				{
 					if (checkBody(curr.readBuffer))
 					{
@@ -101,19 +91,13 @@ int main(int argc, char const *argv[])
 			else if (eventFlags & EPOLLOUT)
 			{
 				int bytesSent = controller.write(fd);
-				if (bytesSent == -1)
-				{
+				if (bytesSent == -1 || (type & CON_CGI && bytesSent == 0))
 					controller.closeConnection(fd);
-					continue;
-				}
-
-				if (type & CON_CLIENT)
+				else if (type & CON_CLIENT)
 				{
 					if (curr.sent >= curr.writeBuffer.length())
 						controller.closeConnection(fd);
 				}
-				else if (type & CON_CGI && bytesSent == 0)
-					controller.closeConnection(fd);
 			}
 		}
 	}
