@@ -26,22 +26,21 @@ int main(int argc, char const *argv[])
 	Controller controller(epoll);
 	if (controller.initServers(sockets))
 	{
-		std::cerr << "Webserv: no server created" << std::endl;
 		return (1);
+		std::cerr << "Webserv: no server created." << std::endl;
 	}
 
 	signal(SIGINT, handleSignal);
 	serverState = 1;
-	std::cout << "Server started" << std::endl;
+	std::cout << "Webserv: server started successfully." << std::endl;
 	while (serverState)
 	{
 		int nEvents = epoll.wait();
 		struct epoll_event *events = epoll.getEvents();
 
-		controller.checkTimeouts();
-
 		for (int i = 0; i < nEvents; i++)
 		{
+			controller.checkTimeouts();
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
 
@@ -101,7 +100,7 @@ int main(int argc, char const *argv[])
 			}
 		}
 	}
-	std::cout << "Server shutdown" << std::endl;
+	std::cout << "Websev: server shutdown complete." << std::endl;
 	return (0);
 }
 
@@ -143,7 +142,6 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 
 	file.close();
-	printServers(servers);
 	return (true);
 }
 

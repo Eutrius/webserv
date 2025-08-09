@@ -55,6 +55,9 @@ void Controller::newServerConnection(Socket socket)
 	conn.type = CON_SERVER;
 	conn.socket = socket;
 	_connections[socket.getFd()] = conn;
+	t_host host = socket.getHost();
+	std::cout << "Webserv: listening on ";
+	std::cout << itoaIP(host.first) << ":" << host.second << "." << std::endl;
 }
 
 void Controller::newCGIConnection(int fd, int targetFd, int event)
