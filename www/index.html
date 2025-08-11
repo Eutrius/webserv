@@ -65,6 +65,9 @@
         border: none;
         cursor: pointer;
         font-size: 14px;
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
       }
       .btn:hover {
         transform: scale(1.05);
@@ -78,6 +81,12 @@
       }
       .btn.delete {
         background: linear-gradient(45deg, #ef5350, #e53935);
+      }
+      .btn.login {
+        background: linear-gradient(45deg, #9c27b0, #673ab7);
+      }
+      .btn.logout {
+        background: linear-gradient(45deg, #795548, #5d4037);
       }
       .status-indicator {
         width: 12px;
@@ -115,6 +124,7 @@
         background: rgba(255, 255, 255, 0.2);
         color: white;
         box-sizing: border-box;
+		resize: none;
       }
       input::placeholder,
       textarea::placeholder {
@@ -134,6 +144,26 @@
         margin-top: 10px;
         word-break: break-all;
       }
+      .method-form {
+        margin-top: 15px;
+      }
+      .method-form input {
+        margin: 5px 0;
+      }
+      .login-status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.2);
+        text-align: center;
+        font-weight: bold;
+      }
+      .logged-in {
+        color: #4caf50;
+      }
+      .logged-out {
+        color: #ff9800;
+      }
     </style>
   </head>
   <body>
@@ -141,44 +171,60 @@
       <h1><span class="status-indicator"></span>Webserver Test Suite</h1>
 
       <div class="test-grid">
+        <!-- GET Method Card -->
         <div class="test-card">
-          <h3>Basic HTTP Methods</h3>
-          <p>Test GET, POST, and DELETE methods on various endpoints.</p>
-          <a href="/files/" class="btn get">GET /files/</a>
-          <button onclick="testPost()" class="btn post">POST Test</button>
-          <button onclick="testDelete()" class="btn delete">DELETE Test</button>
+          <h3>GET Method</h3>
+          <p>Test GET requests with file names.</p>
+          <div class="method-form">
+            <input type="text" id="getFileName" placeholder="Nome del file" />
+            <button onclick="testGet()" class="btn get">Esegui GET</button>
+          </div>
         </div>
+
+        <!-- POST Method Card -->
+        <div class="test-card">
+          <h3>POST Method</h3>
+          <p>Test POST requests with text content and file name.</p>
+          <div class="method-form">
+            <input type="text" id="postFileName" placeholder="Nome del file" />
+            <textarea id="postContent" placeholder="Contenuto del file" rows="3"></textarea>
+            <button onclick="testPost()" class="btn post">Esegui POST</button>
+          </div>
+        </div>
+
+        <!-- DELETE Method Card -->
+        <div class="test-card">
+          <h3>DELETE Method</h3>
+          <p>Test DELETE requests with file names.</p>
+          <div class="method-form">
+            <input type="text" id="deleteFileName" placeholder="Nome del file" />
+            <button onclick="testDelete()" class="btn delete">Esegui DELETE</button>
+          </div>
+        </div>
+
 
         <div class="test-card">
           <h3>File Operations</h3>
           <p>Upload files and browse directory listings.</p>
           <a href="/upload/" class="btn get">Browse Uploads</a>
           <a href="/files/" class="btn get">File Directory</a>
-          <button onclick="showUploadForm()" class="btn post">
-            Upload File
-          </button>
         </div>
 
         <div class="test-card">
           <h3>CGI Scripts</h3>
           <p>Test Common Gateway Interface functionality.</p>
-          <a href="/cgi-bin/test.py/pathinfo?test=query" class="btn get"
-            >Python CGI</a
-          >
-          <a href="/cgi-bin/test.sh/pathinfo?test=query" class="btn get"
-            >Bash CGI</a
-          >
-          <a href="/cgi-bin/test.php/pathinfo?test=query" class="btn get"
-            >Php CGI</a
-          >
+          <a href="/cgi-bin/test.py" class="btn get">Python CGI</a>
+          <a href="/cgi-bin/test.sh" class="btn get">Bash CGI</a>
+          <a href="/cgi-bin/test.php" class="btn get">PHP CGI</a>
         </div>
 
         <div class="test-card">
           <h3>Error Pages</h3>
           <p>Test custom error page handling.</p>
+          <a href="/protected/" class="btn get">403 Error</a>
           <a href="/nonexistent" class="btn get">404 Error</a>
-          <a href="/protected/secret.html" class="btn get">403 Error</a>
-          <button onclick="trigger500()" class="btn delete">500 Error</button>
+          <a href="/not-allowed/" class="btn get">405 Error</a>
+          <a href="/cgi-bin/error.py" class="btn get">500 Error</a>
         </div>
 
         <div class="test-card">
@@ -197,9 +243,36 @@
           <a href="/files/data.json" class="btn get">JSON</a>
           <a href="/files/style.css" class="btn get">CSS</a>
         </div>
+
+        <!-- Cookie Login Card -->
+        <div class="test-card">
+          <h3>Cookie Login</h3>
+          <p>Test cookie-based authentication system.</p>
+          <div id="loginButtons">
+            <button id="loginBtn" onclick="performLogin()" class="btn login" style="display: none;">Login</button>
+            <button id="logoutBtn" onclick="performLogout()" class="btn logout" style="display: none;">Logout</button>
+          </div>
+          <div id="loginStatus" class="login-status">
+            <span id="statusText">Checking login status...</span>
+          </div>
+        </div>
+
+        <!-- Session Test Card -->
+        <div class="test-card">
+          <h3>Session Test</h3>
+          <p>Test server-side session management with sessionId.</p>
+          <div class="method-form">
+            <button onclick="testNewSession()" class="btn get">Test New Session</button>
+            <button onclick="testExistingSession()" class="btn post">Test Existing Session</button>
+            <button onclick="clearSessionCookies()" class="btn delete">Clear All Sessions</button>
+          </div>
+          <div id="sessionStatus" class="login-status">
+            <span id="sessionInfo">Session info will appear here...</span>
+          </div>
+        </div>
       </div>
 
-      <div class="form-container" id="uploadForm" style="display: none">
+      <div class="form-container" id="uploadForm">
         <h3>File Upload Test</h3>
         <form action="/upload" method="post" enctype="multipart/form-data">
           <input type="file" name="file" accept="*/*" required />
@@ -230,52 +303,203 @@
       // Display current session info
       document.getElementById("userAgent").textContent = navigator.userAgent;
       document.getElementById("currentUrl").textContent = window.location.href;
-      document.getElementById("cookieDisplay").textContent =
-        document.cookie || "No cookies set";
+      
+      function updateCookieDisplay() {
+        document.getElementById("cookieDisplay").textContent = document.cookie || "No cookies set";
+      }
 
-      function showUploadForm() {
-        const form = document.getElementById("uploadForm");
-        form.style.display = form.style.display === "none" ? "block" : "none";
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
+
+      async function testNewSession() {
+        try {
+          // Clear any existing sessionId to force new session creation
+          document.cookie = "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          
+          const response = await fetch("/", {
+            method: "GET",
+            credentials: 'include'
+          });
+          
+          const sessionInfo = document.getElementById('sessionInfo');
+          if (response.ok) {
+            // Check if server set a new sessionId cookie
+            const newSessionId = getCookie('sessionId');
+            if (newSessionId) {
+              sessionInfo.innerHTML = `<strong>New Session Created!</strong><br>Session ID: ${newSessionId}<br>Status: ${response.status}`;
+              sessionInfo.parentElement.className = 'login-status logged-in';
+            } else {
+              sessionInfo.innerHTML = `<strong>No Session Cookie Set</strong><br>Status: ${response.status}`;
+              sessionInfo.parentElement.className = 'login-status logged-out';
+            }
+          } else {
+            sessionInfo.innerHTML = `<strong>Request Failed</strong><br>Status: ${response.status}`;
+            sessionInfo.parentElement.className = 'login-status logged-out';
+          }
+          
+          updateCookieDisplay();
+        } catch (error) {
+          document.getElementById('sessionInfo').innerHTML = `<strong>Error:</strong> ${error.message}`;
+        }
+      }
+
+      async function testExistingSession() {
+        try {
+          const currentSessionId = getCookie('sessionId');
+          if (!currentSessionId) {
+            document.getElementById('sessionInfo').innerHTML = '<strong>No existing session found.</strong><br>Click "Test New Session" first.';
+            return;
+          }
+
+          const response = await fetch("/", {
+            method: "GET", 
+            credentials: 'include'
+          });
+          
+          const sessionInfo = document.getElementById('sessionInfo');
+          if (response.ok) {
+            const sessionIdAfter = getCookie('sessionId');
+            if (sessionIdAfter === currentSessionId) {
+              sessionInfo.innerHTML = `<strong>Existing Session Maintained!</strong><br>Session ID: ${currentSessionId}<br>Server recognized existing session<br>Status: ${response.status}`;
+              sessionInfo.parentElement.className = 'login-status logged-in';
+            } else if (sessionIdAfter) {
+              sessionInfo.innerHTML = `<strong>Session Changed!</strong><br>Old ID: ${currentSessionId}<br>New ID: ${sessionIdAfter}<br>Status: ${response.status}`;
+              sessionInfo.parentElement.className = 'login-status logged-out';
+            } else {
+              sessionInfo.innerHTML = `<strong>Session Lost!</strong><br>Previous ID: ${currentSessionId}<br>Status: ${response.status}`;
+              sessionInfo.parentElement.className = 'login-status logged-out';
+            }
+          }
+          
+          updateCookieDisplay();
+        } catch (error) {
+          document.getElementById('sessionInfo').innerHTML = `<strong>Error:</strong> ${error.message}`;
+        }
+      }
+
+      function clearSessionCookies() {
+        // Clear sessionId cookie
+        document.cookie = "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        
+        // Update displays
+        updateCookieDisplay();
+        
+        document.getElementById('sessionInfo').innerHTML = '<strong>All session cookies cleared!</strong><br>Ready for new session test.';
+        document.getElementById('sessionInfo').parentElement.className = 'login-status logged-out';
+        
+        alert("Session cookies cleared successfully!");
+      }
+
+      function checkLoginStatus() {
+        const authCookie = getCookie('auth_session');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const statusText = document.getElementById('statusText');
+        const loginStatus = document.getElementById('loginStatus');
+
+        if (authCookie) {
+          // User is logged in
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'block';
+          statusText.textContent = `Logged in as: ${authCookie}`;
+          loginStatus.className = 'login-status logged-in';
+        } else {
+          // User is not logged in
+          loginBtn.style.display = 'block';
+          logoutBtn.style.display = 'none';
+          statusText.textContent = 'Not logged in';
+          loginStatus.className = 'login-status logged-out';
+        }
+      }
+
+      function performLogin() {
+        // Set authentication cookie without asking for username
+        const expirationDate = new Date();
+        expirationDate.setTime(expirationDate.getTime() + (24 * 60 * 60 * 1000)); // 24 hours
+        document.cookie = `auth_session=user_${Date.now()}; path=/; expires=${expirationDate.toUTCString()}`;
+        
+        // Update displays
+        checkLoginStatus();
+        updateCookieDisplay();
+        
+        alert("Login effettuato con successo!");
+      }
+
+      function performLogout() {
+        if (confirm("Sei sicuro di voler effettuare il logout?")) {
+          // Remove authentication cookie
+          document.cookie = "auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          
+          // Update displays
+          checkLoginStatus();
+          updateCookieDisplay();
+          
+          alert("Logout effettuato con successo");
+        }
+      }
+
+      updateCookieDisplay();
+      checkLoginStatus();
+
+      function testGet() {
+        const fileName = document.getElementById("getFileName").value.trim();
+        if (!fileName) {
+          alert("Inserisci il nome del file per il GET");
+          return;
+        }
+
+        window.open(`/files/${fileName}`, '_blank');
       }
 
       async function testPost() {
+        const fileName = document.getElementById("postFileName").value.trim();
+        const content = document.getElementById("postContent").value;
+        
+        if (!fileName) {
+          alert("Inserisci il nome del file per il POST");
+          return;
+        }
+
         try {
-          const response = await fetch("/uploads/test.txt", {
+          const formData = new FormData();
+          const blob = new Blob([content || "Contenuto di test generato da JavaScript"], {type: "text/plain"});
+          formData.append("file", blob, fileName);
+
+          const response = await fetch("/upload", {
             method: "POST",
-            headers: {
-              "Content-Type": "text/plain",
-            },
-            body: "Test POST data from JavaScript",
+            body: formData
           });
-          alert(`POST response: ${response.status} ${response.statusText}`);
+          alert(`POST risposta: ${response.status} ${response.statusText}`);
         } catch (error) {
-          alert("POST request failed: " + error.message);
+          alert("Richiesta POST fallita: " + error.message);
         }
       }
 
       async function testDelete() {
-        if (confirm("Are you sure you want to test DELETE method?")) {
+        const fileName = document.getElementById("deleteFileName").value.trim();
+        
+        if (!fileName) {
+          alert("Inserisci il nome del file per il DELETE");
+          return;
+        }
+
+        if (confirm(`Sei sicuro di voler eliminare il file "${fileName}"?`)) {
           try {
-            const response = await fetch("/uploads/test.txt", {
+            const response = await fetch(`/uploads/${fileName}`, {
               method: "DELETE",
             });
-            alert(`DELETE response: ${response.status} ${response.statusText}`);
+            alert(`DELETE risposta: ${response.status} ${response.statusText}`);
           } catch (error) {
-            alert("DELETE request failed: " + error.message);
+            alert("Richiesta DELETE fallita: " + error.message);
           }
         }
       }
 
-      async function trigger500() {
-        try {
-          const response = await fetch("/cgi-bin/error.py");
-          alert(`Response: ${response.status} ${response.statusText}`);
-        } catch (error) {
-          alert("Request failed: " + error.message);
-        }
-      }
-
-      // document.cookie = "session_id=abc123; path=/; max-age=3600; HttpOnly;";
+      document.cookie = "test_session=abc123; path=/; max-age=3600";
     </script>
   </body>
 </html>

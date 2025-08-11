@@ -357,7 +357,7 @@ void validatelocation(locationmap &m, Server &serverx)
 				checkAutoindex(jt->second, serverx.location[it->first].autoindex);
 			else if (jt->first == "upload_dir")
 				checkUpload_dir(jt->second, serverx.location[it->first].upload_dir);
-			else if (jt->first == ".py" || jt->first == ".php")
+			else if (jt->first == ".py" || jt->first == ".php" || jt->first == ".sh")
 				checkCgi_extension(jt->first, serverx.location[it->first].cgi_extension, jt->second[0]);
 			else if (jt->first == "client_max_body_size")
 				checkClient_max_body_size(jt->second, serverx.location[it->first].client_max_body_size);
@@ -417,7 +417,7 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 			checkAutoindex(it->second, serverx.autoindex);
 		else if (it->first == "upload_dir")
 			checkUpload_dir(it->second, serverx.upload_dir);
-		else if (it->first == ".py" || it->first == ".php")
+		else if (it->first == ".py" || it->first == ".php" || it->first == ".sh")
 			checkCgi_extension(it->first, serverx.cgi_extension, it->second[0]);
 		else if (it->first == "return")
 			throw std::runtime_error("Return should be inside a location block");
