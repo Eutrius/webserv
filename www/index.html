@@ -176,8 +176,8 @@
           <h3>GET Method</h3>
           <p>Test GET requests with file names.</p>
           <div class="method-form">
-            <input type="text" id="getFileName" placeholder="Nome del file" />
-            <button onclick="testGet()" class="btn get">Esegui GET</button>
+            <input type="text" id="getFileName" placeholder="File name" />
+            <button onclick="testGet()" class="btn get">Execute GET</button>
           </div>
         </div>
 
@@ -186,9 +186,9 @@
           <h3>POST Method</h3>
           <p>Test POST requests with text content and file name.</p>
           <div class="method-form">
-            <input type="text" id="postFileName" placeholder="Nome del file" />
-            <textarea id="postContent" placeholder="Contenuto del file" rows="3"></textarea>
-            <button onclick="testPost()" class="btn post">Esegui POST</button>
+            <input type="text" id="postFileName" placeholder="File name" />
+            <textarea id="postContent" placeholder="File content" rows="3"></textarea>
+            <button onclick="testPost()" class="btn post">Execute POST</button>
           </div>
         </div>
 
@@ -197,8 +197,8 @@
           <h3>DELETE Method</h3>
           <p>Test DELETE requests with file names.</p>
           <div class="method-form">
-            <input type="text" id="deleteFileName" placeholder="Nome del file" />
-            <button onclick="testDelete()" class="btn delete">Esegui DELETE</button>
+            <input type="text" id="deleteFileName" placeholder="File name" />
+            <button onclick="testDelete()" class="btn delete">Execute DELETE</button>
           </div>
         </div>
 
@@ -426,11 +426,11 @@
         checkLoginStatus();
         updateCookieDisplay();
         
-        alert("Login effettuato con successo!");
+        alert("Login completed successfully");
       }
 
       function performLogout() {
-        if (confirm("Sei sicuro di voler effettuare il logout?")) {
+        if (confirm("Are you sure you want to log out?")) {
           // Remove authentication cookie
           document.cookie = "auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
           
@@ -438,7 +438,7 @@
           checkLoginStatus();
           updateCookieDisplay();
           
-          alert("Logout effettuato con successo");
+          alert("Logout completed successfully");
         }
       }
 
@@ -448,56 +448,76 @@
       function testGet() {
         const fileName = document.getElementById("getFileName").value.trim();
         if (!fileName) {
-          alert("Inserisci il nome del file per il GET");
+          alert("Enter the file name for GET");
           return;
         }
 
         window.open(`/files/${fileName}`, '_blank');
       }
 
-      async function testPost() {
-        const fileName = document.getElementById("postFileName").value.trim();
-        const content = document.getElementById("postContent").value;
-        
-        if (!fileName) {
-          alert("Inserisci il nome del file per il POST");
-          return;
-        }
+async function testPost() {
+ const fileName = document.getElementById("postFileName").value.trim();
+ const content = document.getElementById("postContent").value;
+ 
+ if (!fileName) {
+   alert("Enter the file name for POST");
+   return;
+ }
+ 
+ try {
+   const formData = new FormData();
+   const blob = new Blob([content || "Placeholder text"], {type: "text/plain"});
+   formData.append("file", blob, fileName);
+   
+   const response = await fetch("/upload", {
+     method: "POST",
+     body: formData
+   });
+   
+   if (response.ok) {
+     alert(`POST response: ${response.status} ${response.statusText}`);
+   } else {
+     const responseText = await response.text();
+     const newWindow = window.open();
+     
+       newWindow.document.open();
+       newWindow.document.write(responseText);
+       newWindow.document.close();
+   }
+ } catch (error) {
+   alert("POST request failed: " + error.message);
+ }
+}
 
-        try {
-          const formData = new FormData();
-          const blob = new Blob([content || "Contenuto di test generato da JavaScript"], {type: "text/plain"});
-          formData.append("file", blob, fileName);
+async function testDelete() {
+ const fileName = document.getElementById("deleteFileName").value.trim();
+ 
+ if (!fileName) {
+   alert("Enter the file name for DELETE");
+   return;
+ }
 
-          const response = await fetch("/upload", {
-            method: "POST",
-            body: formData
-          });
-          alert(`POST risposta: ${response.status} ${response.statusText}`);
-        } catch (error) {
-          alert("Richiesta POST fallita: " + error.message);
-        }
-      }
-
-      async function testDelete() {
-        const fileName = document.getElementById("deleteFileName").value.trim();
-        
-        if (!fileName) {
-          alert("Inserisci il nome del file per il DELETE");
-          return;
-        }
-
-        if (confirm(`Sei sicuro di voler eliminare il file "${fileName}"?`)) {
-          try {
-            const response = await fetch(`/uploads/${fileName}`, {
-              method: "DELETE",
-            });
-            alert(`DELETE risposta: ${response.status} ${response.statusText}`);
-          } catch (error) {
-            alert("Richiesta DELETE fallita: " + error.message);
-          }
-        }
-      }
+ if (confirm(`Are you sure you want to delete the file "${fileName}"?`)) {
+   try {
+     const response = await fetch(`/uploads/${fileName}`, {
+       method: "DELETE",
+     });
+     
+     if (response.ok) {
+       alert(`DELETE response: ${response.status} ${response.statusText}`);
+     } else {
+       const responseText = await response.text();
+       const newWindow = window.open();
+       
+         newWindow.document.open();
+         newWindow.document.write(responseText);
+         newWindow.document.close();
+     }
+   } catch (error) {
+     alert("DELETE request failed: " + error.message);
+   }
+ }
+}
 
       document.cookie = "test_session=abc123; path=/; max-age=3600";
     </script>
