@@ -34,7 +34,7 @@ void Cookie::createCookie(void)
 	Client new_client;
 
 	new_client.id = generateId();
-	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=3600\r\n");
+	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=20\r\n");
 	clients.push_back(new_client);
 	currentClient = clients.size() - 1;
 }
@@ -44,7 +44,7 @@ void Cookie::createCookie(std::string id)
 	Client new_client;
 
 	new_client.id = id;
-	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=3600\r\n");
+	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=20\r\n");
 	clients.push_back(new_client);
 	currentClient = clients.size() - 1;
 }
@@ -58,7 +58,10 @@ void Cookie::analizeCookie(std::string line)
 	if (client == -1)
 		createCookie();
 	else
+	{
 		currentClient = client;
+		clients[currentClient].info[0] = "";
+	}
 }
 
 int Cookie::findId(std::string line)
@@ -96,7 +99,7 @@ std::string Cookie::generateId(void)
 
 	for (int i = 0; i < 8; i++)
 	{
-		c = (std::rand() % 97) + 33;
+		c = (std::rand() % 93) + 33;
 		id.insert(i, 1, c);
 	}
 	return (id);
@@ -105,10 +108,5 @@ std::string Cookie::generateId(void)
 void Cookie::printClients(void)
 {
 	for (size_t i = 0; i < clients.size(); i++)
-	{
 		std::cout << clients[i].id << std::endl;
-		//std::cout << clients[i].info << std::endl;
-		// for (size_t x = 0; x < clients[i].info.size(); x++)
-		// 	std::cout << clients[i].info[x].first << ": " << clients[i].info[x].second << std::endl;
-	}
 }

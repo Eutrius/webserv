@@ -213,12 +213,14 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 	req.printInfoRequest();
 	curr.req = req;
 
+	(void) cookie;
 	serverInfo &server = curr.req.getServerInfo();
 	requestInfo &request = curr.req.getInfo();
 	Location location = server._rightServer.location[server.location];
 	Response &res = curr.res;
 	for (size_t i = 0; i < cookie.size(); i++)
-		res.appendHeader("Set-Cookie: " + cookie[i]);
+		if (!cookie[i].empty())
+			res.appendHeader("Set-Cookie: " + cookie[i]);
 
 	if (request.isRedirect)
 	{

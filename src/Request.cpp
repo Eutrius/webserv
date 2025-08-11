@@ -216,7 +216,7 @@ void Request::analyzeHeader(std::string header, int curr_pos)
 			_requestInfo._env.push_back(value);
 		curr_pos += line.length() + 1;
 		if (curr_pos < _requestInfo._headerEnd)
-			header = header.substr(line.length() + 1);
+			header.erase(0, line.length() + 1);
 	}
 }
 
@@ -226,9 +226,9 @@ std::pair<std::string, std::string> parse(std::string line)
 	int begin = 0;
 	int end;
 
-	while (line[begin] == ' ' && line[begin] != '\r' && line[begin] != '\n')
+	while (line[begin] == ' ')
 		begin++;
-	if (line[begin] == '\r' || line[begin] == '\n')
+	if (line[begin] == '\r' || line[begin] == '\n' || !line[begin])
 		throw std::runtime_error("Bad request\n");
 	end = begin + 1;
 	while (line[end] != ':' && line[end] != '\r' && line[end] != '\n')
@@ -498,7 +498,7 @@ std::string findInfo(std::string request, std::string toFind)
 	if (pos == -1)
 		return ("");
 	begin = pos + toFind.length();
-	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n')
+	while (request[begin] != ' ' && request[begin] != '\r' && request[begin] != '\n' && request[begin])
 		begin++;
 	if (request[begin] == '\r' || request[begin] == '\n' || !request[begin])
 		return ("");
