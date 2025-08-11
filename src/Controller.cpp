@@ -232,15 +232,14 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 			return (1);
 		}
 	}
-
-	if (request.isCGI)
-	{
-		if (handleCGI(fd))
-			return (0);
-	}
 	else if (request.status == 200)
 	{
-		if (request.method == GET)
+		if (request.isCGI)
+		{
+			if (handleCGI(fd))
+				return (0);
+		}
+		else if (request.method == GET)
 		{
 			if (res.handleGet(server, request, location))
 			{
@@ -276,12 +275,18 @@ int Controller::handleCGI(int fd)
 	Connection &curr = _connections[fd];
 	serverInfo &server = curr.req.getServerInfo();
 	requestInfo &request = curr.req.getInfo();
+	Response &res = curr.res;
 	Location location = server._rightServer.location[server.location];
 
 	std::string fullPath = server.link;
+	if (!res.checkFile(fullPath))
+	{
+		request.status = res.getErrnoHttpStatus(errno);
+		return (0);
+	}
+
 	std::string extension = fullPath.substr(fullPath.find_last_of('.'));
 	std::string binary = location.cgi_extension[extension];
-
 	if (binary.empty())
 	{
 		request.status = 403;
@@ -290,7 +295,6 @@ int Controller::handleCGI(int fd)
 
 	int outPipe[2];
 	int inPipe[2];
-
 	if (initPipes(inPipe, outPipe))
 	{
 		request.status = 500;
