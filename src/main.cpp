@@ -38,9 +38,9 @@ int main(int argc, char const *argv[])
 		int nEvents = epoll.wait();
 		struct epoll_event *events = epoll.getEvents();
 
+		controller.checkTimeouts();
 		for (int i = 0; i < nEvents; i++)
 		{
-			controller.checkTimeouts();
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
 

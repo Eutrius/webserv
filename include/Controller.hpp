@@ -14,7 +14,7 @@
 #include "Socket.hpp"
 #include "parser.hpp"
 
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 4096
 #define TIMEOUT 15
 #define CGI_TIMEOUT 30
 
