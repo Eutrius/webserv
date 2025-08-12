@@ -36,7 +36,7 @@ Request::Request(std::string request, std::vector<Server> server)
 	}
 	catch (std::exception &error)
 	{
-		std::cout << error.what() << std::endl;
+		std::cerr << error.what() << std::endl;
 	}
 }
 

@@ -4,7 +4,7 @@ Epoll::Epoll(void)
 {
 	_epollFd = epoll_create(1);
 	if (_epollFd == -1)
-		std::cerr << "Epoll: failed to create epoll" << std::endl;
+		std::cerr << "Epoll: failed to create epoll." << std::endl;
 }
 
 Epoll::~Epoll(void)
@@ -31,7 +31,7 @@ void Epoll::addFd(int fd, int event)
 	ev.data.fd = fd;
 	nr_fd = epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev);
 	if (nr_fd == -1)
-		throw std::runtime_error("Epoll: failed to add fd to epoll");
+		throw std::runtime_error("Epoll: failed to add fd to epoll.");
 }
 
 void Epoll::removeFd(int fd)
@@ -46,7 +46,7 @@ int Epoll::modifyFd(int fd, int events)
 	ev.data.fd = fd;
 
 	if (epoll_ctl(_epollFd, EPOLL_CTL_MOD, fd, &ev) < 0)
-		throw std::runtime_error("Epoll: failed to modify fd event in epoll");
+		throw std::runtime_error("Epoll: failed to modify fd event in epoll.");
 	return (0);
 }
 
@@ -59,7 +59,7 @@ int Epoll::wait(void)
 	{
 		if (errno == EINTR)
 			return (nEvents);
-		std::cerr << "Epoll: error during epoll wait" << std::endl;
+		std::cerr << "Epoll: error during epoll wait." << std::endl;
 	}
 	return (nEvents);
 }

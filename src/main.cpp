@@ -26,33 +26,29 @@ int main(int argc, char const *argv[])
 	Controller controller(epoll);
 	if (controller.initServers(sockets))
 	{
-		std::cerr << "Webserv: no server created" << std::endl;
 		return (1);
+		std::cerr << "Webserv: no server created." << std::endl;
 	}
 
 	signal(SIGINT, handleSignal);
 	serverState = 1;
-	std::cout << "Server started" << std::endl;
+	std::cout << "Webserv: server started successfully." << std::endl;
 	while (serverState)
 	{
 		int nEvents = epoll.wait();
 		struct epoll_event *events = epoll.getEvents();
 
 		controller.checkTimeouts();
-
 		for (int i = 0; i < nEvents; i++)
 		{
 			int fd = events[i].data.fd;
 			uint32_t eventFlags = events[i].events;
 
-			if (eventFlags & EPOLLERR)
+			if (eventFlags & EPOLLERR || !controller.isValidConnection(fd))
 			{
 				controller.closeConnection(fd);
 				continue;
 			}
-
-			if (!controller.isValidConnection(fd))
-				continue;
 
 			Connection &curr = controller.getConnection(fd);
 			con_type type = curr.type;
@@ -65,22 +61,24 @@ int main(int argc, char const *argv[])
 					continue;
 				}
 
+				if (eventFlags & EPOLLHUP && type & CON_CLIENT)
+				{
+					controller.closeConnection(fd);
+					continue;
+				}
+
 				int bytesRead = controller.read(fd);
 				if (bytesRead == -1)
-					continue;
-
-				if (type & CON_CLIENT)
+					controller.closeConnection(fd);
+				else if (type & CON_CLIENT)
 				{
 					if (checkBody(curr.readBuffer))
 					{
-						std::cout << curr.readBuffer << std::endl;
 						Request req(curr.readBuffer, curr.socket.getServers());
-
 						if (req.getInfo().newClient == true)
 							cookie.createCookie();
 						else
 							cookie.analizeCookie(req.getInfo().cookie);
-						cookie.printClients();
 
 						if (controller.handleRequest(fd, cookie.getClients()[cookie.getCurrentClient()].info))
 							controller.modifyConnection(fd, EPOLLOUT);
@@ -92,17 +90,17 @@ int main(int argc, char const *argv[])
 			else if (eventFlags & EPOLLOUT)
 			{
 				int bytesSent = controller.write(fd);
-				if (type & CON_CLIENT)
+				if (bytesSent == -1 || (type & CON_CGI && bytesSent == 0))
+					controller.closeConnection(fd);
+				else if (type & CON_CLIENT)
 				{
 					if (curr.sent >= curr.writeBuffer.length())
 						controller.closeConnection(fd);
 				}
-				else if (type & CON_CGI && bytesSent == 0)
-					controller.closeConnection(fd);
 			}
 		}
 	}
-	std::cout << "Server shutdown" << std::endl;
+	std::cout << "Websev: server shutdown complete." << std::endl;
 	return (0);
 }
 
@@ -131,7 +129,7 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 	catch (std::exception &e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cerr << e.what() << std::endl;
 		file.close();
 		return (false);
 	}
@@ -150,5 +148,6 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 static void handleSignal(int signal)
 {
 	(void) signal;
+	std::cout << "\n";
 	serverState = 0;
 }

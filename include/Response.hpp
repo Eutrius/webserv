@@ -32,8 +32,9 @@ class Response
 	int handleDelete(serverInfo &server, requestInfo &request);
 	void handleRedirect(serverInfo &server, requestInfo &request);
 	void handleCgi(Controller &controller);
-	bool checkFile(std::string path, int &err);
+	bool checkFile(std::string path);
 	bool isDirectory(std::string path);
+	int getErrnoHttpStatus(int err);
 
    private:
 	std::string _body;
