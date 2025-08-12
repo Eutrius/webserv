@@ -128,9 +128,9 @@ void Controller::checkTimeouts(void)
 		Location location = server._rightServer.location[server.location];
 		Response &res = curr.res;
 
-		if (curr.type & CON_CLIENT)
+		if (curr.type & CON_CLIENT && !request.isCGI)
 		{
-			if (std::time(NULL) - curr.lastActivity > (request.isCGI ? CGI_TIMEOUT : TIMEOUT))
+			if (std::time(NULL) - curr.lastActivity > TIMEOUT)
 			{
 				request.status = 408;
 				res.setBody("");
@@ -297,6 +297,7 @@ int Controller::handleCGI(int fd)
 	int inPipe[2];
 	if (initPipes(inPipe, outPipe))
 	{
+		std::cerr << "CGI: pipes failed to initialize." << std::endl;
 		request.status = 500;
 		return (0);
 	}
@@ -327,6 +328,7 @@ int Controller::handleCGI(int fd)
 	pid_t pid = fork();
 	if (pid == -1)
 	{
+		std::cerr << "CGI: fork failed to create a process." << std::endl;
 		closeConnection(inPipe[1]);
 		closeConnection(outPipe[0]);
 		close(outPipe[1]);
@@ -341,14 +343,17 @@ int Controller::handleCGI(int fd)
 		close(inPipe[1]);
 
 		if (dup2(outPipe[1], STDOUT_FILENO) == -1)
+		{
+			std::cerr << "CGI: failed to duplicate a fd." << std::endl;
 			std::exit(1);
+		}
 		close(outPipe[1]);
 
-		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
-			std::exit(1);
-
 		if (dup2(inPipe[0], STDIN_FILENO) == -1)
+		{
+			std::cerr << "CGI: failed to duplicate a fd." << std::endl;
 			std::exit(1);
+		}
 		close(inPipe[0]);
 
 		std::vector<char *> argv;
@@ -359,10 +364,14 @@ int Controller::handleCGI(int fd)
 		if (!parentDir.empty())
 		{
 			if (chdir(parentDir.c_str()) == -1)
+			{
+				std::cerr << "CGI: failed to change directory." << std::endl;
 				std::exit(1);
+			}
 		}
 
 		execve(binary.c_str(), &argv[0], &envp[0]);
+		std::cerr << "CGI: failed to execute the script." << std::endl;
 		std::exit(1);
 	}
 	else
@@ -439,7 +448,7 @@ void Controller::handleCGIOutput(int fd)
 		if (WEXITSTATUS(pid_status))
 			request.status = 500;
 		else
-			request.status = 408;
+			request.status = 504;
 
 		_cgiConnections.erase(curr.pid);
 		res.setBody("");

@@ -95,9 +95,9 @@ std::vector<Socket> Socket::initSockets(t_serversMap serverMap)
 		}
 		catch (const std::exception &e)
 		{
-			std::cout << e.what() << ": ";
-			std::cout << it->first.first << ":" << it->first.second;
-			std::cout << std::endl;
+			std::cerr << e.what() << ": ";
+			std::cerr << it->first.first << ":" << it->first.second;
+			std::cerr << std::endl;
 		}
 	}
 	return (sockets);

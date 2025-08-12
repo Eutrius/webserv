@@ -129,7 +129,7 @@ static bool parseConfig(int argc, char const *argv[], t_serversMap &serversMap)
 	}
 	catch (std::exception &e)
 	{
-		std::cout << e.what() << std::endl;
+		std::cerr << e.what() << std::endl;
 		file.close();
 		return (false);
 	}
