@@ -75,6 +75,7 @@ int Socket::accept(void)
 
 	if (fcntl(clientFd, F_SETFL, O_NONBLOCK) < 0)
 	{
+		std::cerr << "Socket: failed to set client fd non block." << std::endl;
 		::close(clientFd);
 		return (-1);
 	}

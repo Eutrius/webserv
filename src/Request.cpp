@@ -2,6 +2,10 @@
 
 Request::Request(void)
 {
+	_requestInfo.isCGI = false;
+	_requestInfo.isRedirect = false;
+	_requestInfo.status = 200;
+	_requestInfo.newClient = true;
 }
 
 Request::Request(std::string request, std::vector<Server> server)
@@ -9,10 +13,11 @@ Request::Request(std::string request, std::vector<Server> server)
 	std::string adress;
 	int curr_pos = 0;
 
-	_requestInfo.status = 200;
-	std::string line = request.substr(0, request.find("\n"));
 	_requestInfo.isCGI = false;
 	_requestInfo.isRedirect = false;
+	_requestInfo.status = 200;
+	_requestInfo.newClient = true;
+	std::string line = request.substr(0, request.find("\n"));
 
 	try
 	{
@@ -327,7 +332,7 @@ void Request::bodyLength(void)
 	if (std::atoi(_requestInfo.contentLength.c_str()) != (int) _requestInfo.body.length())
 	{
 		_requestInfo.status = 400;
-		throw std::runtime_error("Bad request: Invalid body Lenght\n");
+		throw std::runtime_error("Bad request: Invalid body Length\n");
 	}
 	pos = _requestInfo.body.find("filename=");
 	if (pos != -1)
@@ -416,9 +421,10 @@ void Request::checkOnLocation(void)
 	}
 	else
 		_requestInfo.URI = "/";
-	if (std::atoi(_requestInfo.contentLength.c_str()) > _serverInfo._rightServer.client_max_body_size)
+	if (std::atoi(_requestInfo.contentLength.c_str()) >
+	    _serverInfo._rightServer.location[_serverInfo.location].client_max_body_size)
 	{
-		_requestInfo.status = 400;
+		_requestInfo.status = 413;
 		throw std::runtime_error("Content length exceeds client max body size\n");
 	}
 	if (!(_serverInfo._rightServer.location[_serverInfo.location].methods & _requestInfo.method))

@@ -27,7 +27,7 @@ class Response
 	std::string generateDate(void);
 	int handleFile(std::string path);
 	void handleError(serverInfo &server, requestInfo &request, Location &location);
-	int handlePost(requestInfo &request, Location &location);
+	int handlePost(serverInfo &server, requestInfo &request, Location &location);
 	int handleGet(serverInfo &server, requestInfo &request, Location &location);
 	int handleDelete(serverInfo &server, requestInfo &request);
 	void handleRedirect(serverInfo &server, requestInfo &request);

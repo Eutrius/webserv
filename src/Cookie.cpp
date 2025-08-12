@@ -34,7 +34,7 @@ void Cookie::createCookie(void)
 	Client new_client;
 
 	new_client.id = generateId();
-	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=20\r\n");
+	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=3600; Path=/\r\n");
 	clients.push_back(new_client);
 	currentClient = clients.size() - 1;
 }
@@ -44,7 +44,7 @@ void Cookie::createCookie(std::string id)
 	Client new_client;
 
 	new_client.id = id;
-	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=20\r\n");
+	new_client.info.push_back("sessionId=" + new_client.id + "; Max-Age=3600; Path=/\r\n");
 	clients.push_back(new_client);
 	currentClient = clients.size() - 1;
 }

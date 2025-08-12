@@ -28,7 +28,11 @@ int Response::handleFile(std::string path)
 
 void Response::handleError(serverInfo &server, requestInfo &request, Location &location)
 {
-	std::string errorFile = location.error_page[request.status];
+	std::string errorFile;
+	if (location.error_page.empty())
+		errorFile = server._rightServer.error_page[request.status];
+	else
+		errorFile = location.error_page[request.status];
 	if (!errorFile.empty())
 	{
 		if (checkFile(errorFile))
@@ -102,7 +106,7 @@ int Response::handleGet(serverInfo &server, requestInfo &request, Location &loca
 	return (0);
 }
 
-int Response::handlePost(requestInfo &request, Location &location)
+int Response::handlePost(serverInfo &server, requestInfo &request, Location &location)
 {
 	if (!location.upload_dir.empty())
 	{
@@ -129,6 +133,7 @@ int Response::handlePost(requestInfo &request, Location &location)
 				file.write(request.body.c_str(), request.body.size());
 				file.close();
 				request.status = 201;
+				(void) server;
 				return (0);
 			}
 		}

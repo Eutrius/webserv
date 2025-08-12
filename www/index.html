@@ -124,7 +124,7 @@
         background: rgba(255, 255, 255, 0.2);
         color: white;
         box-sizing: border-box;
-		resize: none;
+        resize: none;
       }
       input::placeholder,
       textarea::placeholder {
@@ -187,7 +187,11 @@
           <p>Test POST requests with text content and file name.</p>
           <div class="method-form">
             <input type="text" id="postFileName" placeholder="File name" />
-            <textarea id="postContent" placeholder="File content" rows="3"></textarea>
+            <textarea
+              id="postContent"
+              placeholder="File content"
+              rows="3"
+            ></textarea>
             <button onclick="testPost()" class="btn post">Execute POST</button>
           </div>
         </div>
@@ -198,10 +202,11 @@
           <p>Test DELETE requests with file names.</p>
           <div class="method-form">
             <input type="text" id="deleteFileName" placeholder="File name" />
-            <button onclick="testDelete()" class="btn delete">Execute DELETE</button>
+            <button onclick="testDelete()" class="btn delete">
+              Execute DELETE
+            </button>
           </div>
         </div>
-
 
         <div class="test-card">
           <h3>File Operations</h3>
@@ -249,8 +254,22 @@
           <h3>Cookie Login</h3>
           <p>Test cookie-based authentication system.</p>
           <div id="loginButtons">
-            <button id="loginBtn" onclick="performLogin()" class="btn login" style="display: none;">Login</button>
-            <button id="logoutBtn" onclick="performLogout()" class="btn logout" style="display: none;">Logout</button>
+            <button
+              id="loginBtn"
+              onclick="performLogin()"
+              class="btn login"
+              style="display: none"
+            >
+              Login
+            </button>
+            <button
+              id="logoutBtn"
+              onclick="performLogout()"
+              class="btn logout"
+              style="display: none"
+            >
+              Logout
+            </button>
           </div>
           <div id="loginStatus" class="login-status">
             <span id="statusText">Checking login status...</span>
@@ -262,9 +281,15 @@
           <h3>Session Test</h3>
           <p>Test server-side session management with sessionId.</p>
           <div class="method-form">
-            <button onclick="testNewSession()" class="btn get">Test New Session</button>
-            <button onclick="testExistingSession()" class="btn post">Test Existing Session</button>
-            <button onclick="clearSessionCookies()" class="btn delete">Clear All Sessions</button>
+            <button onclick="testNewSession()" class="btn get">
+              Test New Session
+            </button>
+            <button onclick="testExistingSession()" class="btn post">
+              Test Existing Session
+            </button>
+            <button onclick="clearSessionCookies()" class="btn delete">
+              Clear All Sessions
+            </button>
           </div>
           <div id="sessionStatus" class="login-status">
             <span id="sessionInfo">Session info will appear here...</span>
@@ -303,141 +328,150 @@
       // Display current session info
       document.getElementById("userAgent").textContent = navigator.userAgent;
       document.getElementById("currentUrl").textContent = window.location.href;
-      
+
       function updateCookieDisplay() {
-        document.getElementById("cookieDisplay").textContent = document.cookie || "No cookies set";
+        document.getElementById("cookieDisplay").textContent =
+          document.cookie || "No cookies set";
       }
 
       function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
+        if (parts.length === 2) return parts.pop().split(";").shift();
         return null;
       }
 
       async function testNewSession() {
         try {
           // Clear any existing sessionId to force new session creation
-          document.cookie = "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-          
+          document.cookie =
+            "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+
           const response = await fetch("/", {
             method: "GET",
-            credentials: 'include'
+            credentials: "include",
           });
-          
-          const sessionInfo = document.getElementById('sessionInfo');
+
+          const sessionInfo = document.getElementById("sessionInfo");
           if (response.ok) {
             // Check if server set a new sessionId cookie
-            const newSessionId = getCookie('sessionId');
+            const newSessionId = getCookie("sessionId");
             if (newSessionId) {
               sessionInfo.innerHTML = `<strong>New Session Created!</strong><br>Session ID: ${newSessionId}<br>Status: ${response.status}`;
-              sessionInfo.parentElement.className = 'login-status logged-in';
+              sessionInfo.parentElement.className = "login-status logged-in";
             } else {
               sessionInfo.innerHTML = `<strong>No Session Cookie Set</strong><br>Status: ${response.status}`;
-              sessionInfo.parentElement.className = 'login-status logged-out';
+              sessionInfo.parentElement.className = "login-status logged-out";
             }
           } else {
             sessionInfo.innerHTML = `<strong>Request Failed</strong><br>Status: ${response.status}`;
-            sessionInfo.parentElement.className = 'login-status logged-out';
+            sessionInfo.parentElement.className = "login-status logged-out";
           }
-          
+
           updateCookieDisplay();
         } catch (error) {
-          document.getElementById('sessionInfo').innerHTML = `<strong>Error:</strong> ${error.message}`;
+          document.getElementById("sessionInfo").innerHTML =
+            `<strong>Error:</strong> ${error.message}`;
         }
       }
 
       async function testExistingSession() {
         try {
-          const currentSessionId = getCookie('sessionId');
+          const currentSessionId = getCookie("sessionId");
           if (!currentSessionId) {
-            document.getElementById('sessionInfo').innerHTML = '<strong>No existing session found.</strong><br>Click "Test New Session" first.';
+            document.getElementById("sessionInfo").innerHTML =
+              '<strong>No existing session found.</strong><br>Click "Test New Session" first.';
             return;
           }
 
           const response = await fetch("/", {
-            method: "GET", 
-            credentials: 'include'
+            method: "GET",
+            credentials: "include",
           });
-          
-          const sessionInfo = document.getElementById('sessionInfo');
+
+          const sessionInfo = document.getElementById("sessionInfo");
           if (response.ok) {
-            const sessionIdAfter = getCookie('sessionId');
+            const sessionIdAfter = getCookie("sessionId");
             if (sessionIdAfter === currentSessionId) {
               sessionInfo.innerHTML = `<strong>Existing Session Maintained!</strong><br>Session ID: ${currentSessionId}<br>Server recognized existing session<br>Status: ${response.status}`;
-              sessionInfo.parentElement.className = 'login-status logged-in';
+              sessionInfo.parentElement.className = "login-status logged-in";
             } else if (sessionIdAfter) {
               sessionInfo.innerHTML = `<strong>Session Changed!</strong><br>Old ID: ${currentSessionId}<br>New ID: ${sessionIdAfter}<br>Status: ${response.status}`;
-              sessionInfo.parentElement.className = 'login-status logged-out';
+              sessionInfo.parentElement.className = "login-status logged-out";
             } else {
               sessionInfo.innerHTML = `<strong>Session Lost!</strong><br>Previous ID: ${currentSessionId}<br>Status: ${response.status}`;
-              sessionInfo.parentElement.className = 'login-status logged-out';
+              sessionInfo.parentElement.className = "login-status logged-out";
             }
           }
-          
+
           updateCookieDisplay();
         } catch (error) {
-          document.getElementById('sessionInfo').innerHTML = `<strong>Error:</strong> ${error.message}`;
+          document.getElementById("sessionInfo").innerHTML =
+            `<strong>Error:</strong> ${error.message}`;
         }
       }
 
       function clearSessionCookies() {
         // Clear sessionId cookie
-        document.cookie = "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-        
+        document.cookie =
+          "sessionId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+
         // Update displays
         updateCookieDisplay();
-        
-        document.getElementById('sessionInfo').innerHTML = '<strong>All session cookies cleared!</strong><br>Ready for new session test.';
-        document.getElementById('sessionInfo').parentElement.className = 'login-status logged-out';
-        
+
+        document.getElementById("sessionInfo").innerHTML =
+          "<strong>All session cookies cleared!</strong><br>Ready for new session test.";
+        document.getElementById("sessionInfo").parentElement.className =
+          "login-status logged-out";
+
         alert("Session cookies cleared successfully!");
       }
 
       function checkLoginStatus() {
-        const authCookie = getCookie('auth_session');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const statusText = document.getElementById('statusText');
-        const loginStatus = document.getElementById('loginStatus');
+        const authCookie = getCookie("auth_session");
+        const loginBtn = document.getElementById("loginBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const statusText = document.getElementById("statusText");
+        const loginStatus = document.getElementById("loginStatus");
 
         if (authCookie) {
           // User is logged in
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = 'block';
+          loginBtn.style.display = "none";
+          logoutBtn.style.display = "block";
           statusText.textContent = `Logged in as: ${authCookie}`;
-          loginStatus.className = 'login-status logged-in';
+          loginStatus.className = "login-status logged-in";
         } else {
           // User is not logged in
-          loginBtn.style.display = 'block';
-          logoutBtn.style.display = 'none';
-          statusText.textContent = 'Not logged in';
-          loginStatus.className = 'login-status logged-out';
+          loginBtn.style.display = "block";
+          logoutBtn.style.display = "none";
+          statusText.textContent = "Not logged in";
+          loginStatus.className = "login-status logged-out";
         }
       }
 
       function performLogin() {
         // Set authentication cookie without asking for username
         const expirationDate = new Date();
-        expirationDate.setTime(expirationDate.getTime() + (24 * 60 * 60 * 1000)); // 24 hours
+        expirationDate.setTime(expirationDate.getTime() + 24 * 60 * 60 * 1000); // 24 hours
         document.cookie = `auth_session=user_${Date.now()}; path=/; expires=${expirationDate.toUTCString()}`;
-        
+
         // Update displays
         checkLoginStatus();
         updateCookieDisplay();
-        
+
         alert("Login completed successfully");
       }
 
       function performLogout() {
         if (confirm("Are you sure you want to log out?")) {
           // Remove authentication cookie
-          document.cookie = "auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-          
+          document.cookie =
+            "auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+
           // Update displays
           checkLoginStatus();
           updateCookieDisplay();
-          
+
           alert("Logout completed successfully");
         }
       }
@@ -452,74 +486,78 @@
           return;
         }
 
-        window.open(`/files/${fileName}`, '_blank');
+        window.open(`/files/${fileName}`, "_blank");
       }
 
-async function testPost() {
- const fileName = document.getElementById("postFileName").value.trim();
- const content = document.getElementById("postContent").value;
- 
- if (!fileName) {
-   alert("Enter the file name for POST");
-   return;
- }
- 
- try {
-   const formData = new FormData();
-   const blob = new Blob([content || "Placeholder text"], {type: "text/plain"});
-   formData.append("file", blob, fileName);
-   
-   const response = await fetch("/upload", {
-     method: "POST",
-     body: formData
-   });
-   
-   if (response.ok) {
-     alert(`POST response: ${response.status} ${response.statusText}`);
-   } else {
-     const responseText = await response.text();
-     const newWindow = window.open();
-     
-       newWindow.document.open();
-       newWindow.document.write(responseText);
-       newWindow.document.close();
-   }
- } catch (error) {
-   alert("POST request failed: " + error.message);
- }
-}
+      async function testPost() {
+        const fileName = document.getElementById("postFileName").value.trim();
+        const content = document.getElementById("postContent").value;
 
-async function testDelete() {
- const fileName = document.getElementById("deleteFileName").value.trim();
- 
- if (!fileName) {
-   alert("Enter the file name for DELETE");
-   return;
- }
+        if (!fileName) {
+          alert("Enter the file name for POST");
+          return;
+        }
 
- if (confirm(`Are you sure you want to delete the file "${fileName}"?`)) {
-   try {
-     const response = await fetch(`/uploads/${fileName}`, {
-       method: "DELETE",
-     });
-     
-     if (response.ok) {
-       alert(`DELETE response: ${response.status} ${response.statusText}`);
-     } else {
-       const responseText = await response.text();
-       const newWindow = window.open();
-       
-         newWindow.document.open();
-         newWindow.document.write(responseText);
-         newWindow.document.close();
-     }
-   } catch (error) {
-     alert("DELETE request failed: " + error.message);
-   }
- }
-}
+        try {
+          const formData = new FormData();
+          const blob = new Blob([content || "Placeholder text"], {
+            type: "text/plain",
+          });
+          formData.append("file", blob, fileName);
 
-      document.cookie = "test_session=abc123; path=/; max-age=3600";
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            alert(`POST response: ${response.status} ${response.statusText}`);
+          } else {
+            const responseText = await response.text();
+            const newWindow = window.open();
+
+            newWindow.document.open();
+            newWindow.document.write(responseText);
+            newWindow.document.close();
+          }
+        } catch (error) {
+          alert("POST request failed: " + error.message);
+        }
+      }
+
+      async function testDelete() {
+        const fileName = document.getElementById("deleteFileName").value.trim();
+
+        if (!fileName) {
+          alert("Enter the file name for DELETE");
+          return;
+        }
+
+        if (
+          confirm(`Are you sure you want to delete the file "${fileName}"?`)
+        ) {
+          try {
+            const response = await fetch(`/uploads/${fileName}`, {
+              method: "DELETE",
+            });
+
+            if (response.ok) {
+              alert(
+                `DELETE response: ${response.status} ${response.statusText}`,
+              );
+            } else {
+              const responseText = await response.text();
+              const newWindow = window.open();
+
+              newWindow.document.open();
+              newWindow.document.write(responseText);
+              newWindow.document.close();
+            }
+          } catch (error) {
+            alert("DELETE request failed: " + error.message);
+          }
+        }
+      }
     </script>
   </body>
 </html>

@@ -37,20 +37,20 @@ std::string ft_trim(const std::string &s)
 
 std::string ft_replace(const std::string &originale, const std::string &daSostituire, const std::string &daInserire)
 {
-	std::string risultato;
-	risultato.reserve(originale.length());
+	std::string result;
+	result.reserve(originale.length());
 	size_t pos = 0;
 	size_t foundPos;
 	size_t len = daSostituire.length();
 
 	while ((foundPos = originale.find(daSostituire, pos)) != std::string::npos)
 	{
-		risultato.append(originale, pos, foundPos - pos);
-		risultato += daInserire;
+		result.append(originale, pos, foundPos - pos);
+		result += daInserire;
 		pos = foundPos + len;
 	}
-	risultato.append(originale, pos, originale.length() - pos);
-	return (risultato);
+	result.append(originale, pos, originale.length() - pos);
+	return (result);
 }
 
 bool isNotValidIP(const std::string &ip)
@@ -426,8 +426,6 @@ void validateserver(std::map<std::string, std::vector<std::string> > m, Server &
 		else
 			throw std::runtime_error("Is not a valid error_page number: " + it->first);
 	}
-	//if (serverx.upload_dir == "")
-	//	throw std::runtime_error("Every server needs an upload directory");
 }
 
 std::string removeComments(const std::string &input)
@@ -529,23 +527,21 @@ void splitStringToMap(const std::string &input, std::map<std::string, std::vecto
 	if (tokens[0] == "return" && result.size())
 		throw std::runtime_error("error: \"return\" should be the only directive");
 
-	// Se la chiave esiste già
 	if (result.find(key) != result.end())
 	{
-		// Aggiung i nuovi valori a quelli esistenti
 		for (std::vector<std::string>::const_iterator it = newValues.begin(); it != newValues.end(); ++it)
 			result[key].push_back(*it);
 	}
 	else
-		result[key] = newValues;  // Se la chiave non esiste
+		result[key] = newValues;
 }
 
 void parseinserver(std::string &file, Server &serverx)
 {
 	size_t i;
 
-	std::map<std::string, std::vector<std::string> > mappa;
-	locationmap mappa_location;
+	std::map<std::string, std::vector<std::string> > map;
+	locationmap map_location;
 	const size_t npos = std::string::npos;
 	while (file.find_first_not_of(' ') != std::string::npos && file[file.find_first_not_of(' ')] != '}')
 	{
@@ -556,7 +552,7 @@ void parseinserver(std::string &file, Server &serverx)
 		if (directive == "location")
 		{
 			file = file.substr(8);
-			std::map<std::string, std::vector<std::string> > mappa2;
+			std::map<std::string, std::vector<std::string> > map2;
 			size_t pos1;
 			size_t pos2;
 			std::vector<size_t> candidates;
@@ -571,26 +567,26 @@ void parseinserver(std::string &file, Server &serverx)
 				throw std::runtime_error("location section needs to end with \"}\"");
 			while (file.find_first_not_of(' ') != npos && file[file.find_first_not_of(' ')] != '}')
 			{
-				splitStringToMap(file, mappa2);
+				splitStringToMap(file, map2);
 				i = file.find_first_of(";");
 				file = file.substr(i + 1);
 			}
-			if (mappa_location.find(key) != mappa_location.end())
+			if (map_location.find(key) != map_location.end())
 				throw std::runtime_error("location is duplicate: " + key);
 			if (key.find(" ") != npos)
 				throw std::runtime_error("location directive takes one argument followed by a block {}");
 			file = file.substr(file.find_first_of("}") + 1);
-			mappa_location[key] = mappa2;
+			map_location[key] = map2;
 		}
 		else
 		{
-			splitStringToMap(file, mappa);
+			splitStringToMap(file, map);
 			i = file.find_first_of(";");
 			file = file.substr(i + 1);
 		}
 	}
-	validateserver(mappa, serverx);
-	validatelocation(mappa_location, serverx);
+	validateserver(map, serverx);
+	validatelocation(map_location, serverx);
 }
 
 void parse(std::string file, std::vector<Server> &main_vector)
@@ -625,12 +621,12 @@ void parse(std::string file, std::vector<Server> &main_vector)
 
 void readFileAsString(std::ifstream &file, std::vector<Server> &main_vector)
 {
-	std::ostringstream contenutoStream;
-	contenutoStream << file.rdbuf();
+	std::ostringstream contentStream;
+	contentStream << file.rdbuf();
 
-	std::string contenutoFiltrato = removeComments(contenutoStream.str());
-	contenutoFiltrato = ft_replace(contenutoFiltrato, "\t", " ");
-	contenutoFiltrato = ft_replace(contenutoFiltrato, "\r", " ");
-	contenutoFiltrato = ft_replace(contenutoFiltrato, "\n", " ");
-	parse(contenutoFiltrato, main_vector);
+	std::string filteredContent = removeComments(contentStream.str());
+	filteredContent = ft_replace(filteredContent, "\t", " ");
+	filteredContent = ft_replace(filteredContent, "\r", " ");
+	filteredContent = ft_replace(filteredContent, "\n", " ");
+	parse(filteredContent, main_vector);
 }

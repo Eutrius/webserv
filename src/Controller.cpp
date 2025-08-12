@@ -88,7 +88,7 @@ void Controller::newClientConnection(int fd)
 		}
 		catch (std::exception &e)
 		{
-			std::cout << e.what() << std::endl;
+			std::cerr << e.what() << std::endl;
 		}
 	}
 }
@@ -249,7 +249,7 @@ int Controller::handleRequest(int fd, std::vector<std::string> cookie)
 		}
 		else if (request.method == POST)
 		{
-			if (res.handlePost(request, location))
+			if (res.handlePost(server, request, location))
 			{
 				curr.writeBuffer = res.getCompleteResponse();
 				return (1);
